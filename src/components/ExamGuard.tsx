@@ -16,7 +16,7 @@ export function ExamGuard({
   const router = useRouter();
 
   useEffect(() => {
-    console.log("AccessType from ", accessType, courseId);
+    // console.log("AccessType from ", accessType, courseId);
     if (status === 'loading') return;
 
     // Admin bypass (optional but recommended)

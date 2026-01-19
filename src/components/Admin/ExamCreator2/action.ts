@@ -26,7 +26,7 @@ export const uploadFileToS3 = async (file: File): Promise<string | null> => {
         file
       );
 
-      console.log('image Url : ',imageUrl);
+      // console.log('image Url : ',imageUrl);
 
       return imageUrl || null;
     } catch (error) {

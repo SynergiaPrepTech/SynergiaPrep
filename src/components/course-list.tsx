@@ -50,7 +50,7 @@ export default function CourseList() {
         const data = await response.json();
         setUserCourses(data.data.map((course: Course) => course.id));
       } catch (error) {
-        console.log("Error fetching courses:", error);
+        // console.log("Error fetching courses:", error);
       }
     }
 
@@ -62,7 +62,7 @@ export default function CourseList() {
     fetchCourses();
   }, [session?.user.id]);
 
-  useEffect(() => { console.log(userCourses) },[userCourses])
+
 
   if (isLoading) {
     return (

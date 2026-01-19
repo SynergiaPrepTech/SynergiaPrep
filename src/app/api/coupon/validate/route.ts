@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     
     const { courseId, couponCode } = await req.json();
 
-    console.log(courseId, couponCode)
+    // console.log(courseId, couponCode)
 
     if (!courseId || !couponCode) {
       return NextResponse.json(

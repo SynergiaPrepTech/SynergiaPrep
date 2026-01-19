@@ -86,7 +86,7 @@ export default function InstrumentsAndChemicalsForm() {
       });
 
       const result = await response.json();
-      console.log("Web3Forms response:", result);
+      // console.log("Web3Forms response:", result);
 
       if (result.success) {
         showNotification(

@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   //Hash the OTP
   const hashedOtp = await bcrypt.hash(otp.toString(), 10);
-  console.log(otp);
+  // console.log(otp);
   try {
     //console.log(process.env.RESEND_API_KEY);
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
           : "OTP to Reset Password",
       react: template,
     });
-    console.log(data, error);
+    // console.log(data, error);
     if (error) {
       console.log("Error: ", error);
       return new Response(JSON.stringify({ error: "Could not send OTP" }), {

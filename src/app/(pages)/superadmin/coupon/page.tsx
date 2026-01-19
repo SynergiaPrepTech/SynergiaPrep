@@ -50,7 +50,7 @@ export default function CouponAdminPage() {
 
   // Debug log to see what's happening
   useEffect(() => {
-    console.log("Form state updated:", form);
+    // console.log("Form state updated:", form);
   }, [form]);
 
   /* ================= FETCH ================= */
@@ -214,7 +214,7 @@ export default function CouponAdminPage() {
   // Special handler for date to prevent conflicts
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    console.log("Date changed to:", value);
+    // console.log("Date changed to:", value);
     handleFormChange("validTill", value);
   };
 
