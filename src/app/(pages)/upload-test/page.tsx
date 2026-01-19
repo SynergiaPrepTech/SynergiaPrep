@@ -30,7 +30,7 @@ export default function Home() {
 });
 
 
-        console.log("File uploaded successfully");
+        // console.log("File uploaded successfully");
       }
     };
     reader.readAsArrayBuffer(file);

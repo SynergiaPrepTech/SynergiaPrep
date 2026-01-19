@@ -122,7 +122,7 @@ const TestListing: React.FC<TestListingProps> = ({
 
   // Handle test start - check if user is logged in (YOUR LOGIC)
   const handleStartTest = (test: Test) => {
-    console.log(test);
+    // console.log(test);
     // Not logged in → login
     if (!isLoggedIn) {
       const callbackUrl = `/exam?examId=${test.id}&type=${type}`;

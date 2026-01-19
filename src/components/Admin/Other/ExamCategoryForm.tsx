@@ -171,7 +171,7 @@ const ExamManagement = () => {
         ...dataToSubmit,
         // Don't include subjects here
       };
-      console.log(dataToSubmit);
+      // console.log(dataToSubmit);
 
       console.log("Submitting Data: ", payload);
 

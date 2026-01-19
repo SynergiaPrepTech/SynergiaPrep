@@ -25,7 +25,7 @@ export async function uploadImg(signedUrl: string, fileData: Buffer<ArrayBufferL
   }); 
 
   const data = await res.json();
-  console.log(data);
+  // console.log(data);
   if(!data.signedUrl) return false;
 
   // Preserve original image quality - use original file data directly
@@ -37,14 +37,14 @@ export async function uploadImg(signedUrl: string, fileData: Buffer<ArrayBufferL
     method: "PUT",
   });
   
-  console.log(res1);
+  // console.log(res1);
   if (res1.ok) {
-    console.log("File uploaded with original quality");
+    // console.log("File uploaded with original quality");
     // Update database with the image URL
     dbUpdateImgUsingId(session?.user?.id, {
       image: data.signedUrl.split('?')[0] as string
     });
-    console.log("Image URL updated");
+    // console.log("Image URL updated");
   }
   return true;
 }
@@ -63,7 +63,7 @@ export async function uploadImgDB(signedUrl: string, fileData: ArrayBuffer, file
   }); 
 
   const data = await res.json();
-  console.log(data);
+  // console.log(data);
   if(!data.signedUrl) return false;
 
   // Preserve original quality - use the file data as-is
@@ -78,9 +78,9 @@ export async function uploadImgDB(signedUrl: string, fileData: ArrayBuffer, file
   
   console.log(res1);
   if (res1.ok) {
-    console.log("File uploaded with original quality");
+    // console.log("File uploaded with original quality");
     imageUrl = data.signedUrl.split('?')[0];
-    console.log("Image URL updated");
+    // console.log("Image URL updated");
   }
   
   return imageUrl;
@@ -101,7 +101,7 @@ export async function deleteImageDB(signedUrl: string) {
   }); 
 
   const data = await res.json();
-  console.log(data);
+  // console.log(data);
   if(!data.signedUrl) return false;
     
   const res1 = await fetch(data.signedUrl, {
@@ -142,14 +142,14 @@ export async function deleteServerSide(signedUrl: string, origin: string) {
   }); 
 
   const data = await res.json();
-  console.log(data);
+  // console.log(data);
   if(!data.signedUrl) return false;
     
   const res1 = await fetch(data.signedUrl, {
     method: "DELETE",
   });
   
-  console.log(res1);
+  // console.log(res1);
   if (res1.ok) {
     console.log("File deleted");
     dbUpdateImgUsingId(session?.user?.id, {

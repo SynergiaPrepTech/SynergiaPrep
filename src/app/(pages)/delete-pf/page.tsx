@@ -9,8 +9,7 @@ function getFileName(url: string): string {
 
 export default function Page() {
   const { data: session } = useSession();
-  // probably use UseEFFECT here instead of this
-  console.log();
+  
   if (!session?.user?.image) return <h1>Not Found</h1>;
   const fileName = getFileName(session.user.image);
   // async function DeleteImg(presignedURL: string) {
@@ -59,9 +58,9 @@ export default function Page() {
             presignedURL.toString(),
             window.location.origin
           );
-          console.log(serverSide);
+          // console.log(serverSide);
           if (serverSide) {
-            console.log("File deleted successfully");
+            // console.log("File deleted successfully");
           } else {
             console.log("File delete failed");
           }

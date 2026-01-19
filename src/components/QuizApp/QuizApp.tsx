@@ -87,7 +87,7 @@ const QuizApp = () => {
     const fetchExamData = async () => {
       const response = await fetch(`/api/v1/exams/${examId}`);
       const data = await response.json();
-      console.log("exam data:",data.data)
+      // console.log("exam data:",data.data)
       setAccessType(data.data.accessType)
       setCourseId(data.data.courseId);
       setExam(data)
@@ -362,7 +362,7 @@ setAccessType(data?.data?.accessType);
       userId: session?.user.id ?? "",
     };
 
-    console.log("User Response: ", updatedResponse);
+    // console.log("User Response: ", updatedResponse);
 
     try {
       const response = await fetch(`/api/v1/user-submissions`, {
@@ -372,7 +372,7 @@ setAccessType(data?.data?.accessType);
       });
 
       const result = await response.json();
-      console.log(result);
+      // console.log(result);
 
       // Destructuring data from result object
       const {
@@ -402,7 +402,7 @@ setAccessType(data?.data?.accessType);
         };
       };
 
-      console.log("Report:", report);
+      // console.log("Report:", report);
       
       // Fix: Use examId (lowercase 'd') instead of examID
       const generateReport = await fetch(
@@ -418,7 +418,7 @@ setAccessType(data?.data?.accessType);
       );
       
       const generateReportData = await generateReport.json();
-      console.log("Generate Report:", generateReportData);
+      // console.log("Generate Report:", generateReportData);
       setCurrentStep("submitted");
       setUserResponse(updatedResponse);
     } catch (error) {

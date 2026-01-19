@@ -68,7 +68,7 @@ export const PATCH = async (req: NextRequest) => {
     }
 
     const body = await req.json();
-    console.log("PATCH request body:", body);
+    // console.log("PATCH request body:", body);
 
     // Validate the input
     const validation = UserUpdateValidationSchema.safeParse(body);
@@ -132,7 +132,7 @@ export const PATCH = async (req: NextRequest) => {
       },
     });
 
-    console.log("Updated user:", updatedUser);
+    // console.log("Updated user:", updatedUser);
     return successResponse(updatedUser, "User updated successfully", 200);
   } catch (error: unknown) {
     console.error("PATCH user error:", error);

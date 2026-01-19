@@ -224,11 +224,11 @@ export default function CourseManagement() {
       return;
     }
 
-    console.log("Creating course:", newCourse);
+    // console.log("Creating course:", newCourse);
 
     // Upload the course image and get its URL
     const ImageURL = await uploadImage(courseImage.file);
-    console.log("ImageURL: ", ImageURL);
+    // console.log("ImageURL: ", ImageURL);
 
     // Create a new course object with the updated thumbnailUrl
     const updatedCourse = { ...newCourse, thumbnailUrl: ImageURL ?? "" };
@@ -236,7 +236,7 @@ export default function CourseManagement() {
     // Update state if needed (this will happen asynchronously)
     setNewCourse(updatedCourse);
 
-    console.log("POST: ", updatedCourse);
+    // console.log("POST: ", updatedCourse);
 
     // Send a POST request with the updated course data
     const response = await fetch("/api/v1/courses", {
@@ -246,7 +246,7 @@ export default function CourseManagement() {
     });
     const data = await response.json();
     URL.revokeObjectURL(courseImage.previewUrl);
-    console.log(data);
+    // console.log(data);
 
     // Refresh courses list, close the dialog, and reset form data
     fetchCourses();
@@ -270,7 +270,7 @@ export default function CourseManagement() {
       method: "DELETE",
     });
     const data = await response.json();
-    console.log(data);
+    // console.log(data);
 
     fetchCourses();
     setIsDeleteDialogOpen(false);
@@ -284,7 +284,7 @@ export default function CourseManagement() {
 
     const previewUrl = URL.createObjectURL(file);
     const imageData = { file, previewUrl };
-    console.log(imageData);
+    // console.log(imageData);
     setCourseImage(imageData);
   };
 
@@ -301,7 +301,7 @@ export default function CourseManagement() {
       examCategoryIds: course.examCategories?.map((cat) => cat.id) || [],
       examIds: course.examIds?.map((cat) => cat.id) || [],
     });
-    console.log("Edit course: ", course);
+    // console.log("Edit course: ", course);
   };
 
   const handleEditCourse = async () => {
