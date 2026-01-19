@@ -22,8 +22,15 @@ export async function POST(req: Request) {
     // Fetch course
     const course = await db.course.findUnique({
       where: { id: courseId },
-      select: { id: true, price: true, title: true, discount: true },
+      select: { id: true, price: true, title: true, discount: true,level:true },
     });
+
+    if(course?.level === "COMING_SOON"){
+        return NextResponse.json(
+        { error: true, message: "This Course Is Not Released Yet !" },
+        { status: 404 }
+      );
+    }
 
     if (!course) {
       return NextResponse.json(
