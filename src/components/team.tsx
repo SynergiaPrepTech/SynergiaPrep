@@ -48,7 +48,7 @@ export default function Team() {
     {
       img: "/assets/images/Mouli.jpg",
       h1: "Mouli Kalsa",
-      p: ["Director and CMO"],
+      p: ["Executive Director and CMO"],
       expertise: ["Marketing", "Brand Development", "Communication"],
       bio: "Expert in marketing strategies and brand development.",
       achievements: ["Developed successful marketing campaigns.", "Enhanced brand visibility."],

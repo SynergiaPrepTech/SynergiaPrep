@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import type { Course } from "@/type/course";
 import { Play } from "lucide-react";
+import Image from "next/image";
 
 interface CourseCarouselProps {
   courses?: Course[];
@@ -30,7 +31,7 @@ export default function CourseCarousel({
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoScrolling, setIsAutoScrolling] = useState(autoScroll);
-  const [itemsPerView, setItemsPerView] = useState(1);
+  const [isDesktop, setIsDesktop] = useState(false);
   const carouselRef = useRef<HTMLDivElement>(null);
   const autoScrollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [touchStartX, setTouchStartX] = useState(0);
@@ -41,32 +42,15 @@ export default function CourseCarousel({
     return gradientPresets[index % gradientPresets.length];
   };
 
-  // Responsive items per view with better mobile handling
+  // Check if device is desktop (1024px and above)
   useEffect(() => {
-    const updateItemsPerView = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setItemsPerView(1);
-      } else if (width < 768) {
-        setItemsPerView(1.2); // Slightly more than 1 for better mobile peek
-      } else if (width < 1024) {
-        setItemsPerView(1.8); // Almost 2 for tablets
-      } else if (width < 1280) {
-        setItemsPerView(2.5); // Between 2 and 3
-      } else {
-        setItemsPerView(3);
-      }
+    const checkIfDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
     };
 
-    updateItemsPerView();
-    const handleResize = () => {
-      updateItemsPerView();
-      // Reset carousel position on resize
-      setCurrentIndex(0);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    checkIfDesktop();
+    window.addEventListener("resize", checkIfDesktop);
+    return () => window.removeEventListener("resize", checkIfDesktop);
   }, []);
 
   // Fetch courses if not provided via props
@@ -130,41 +114,28 @@ export default function CourseCarousel({
     fetchUserCourses();
   }, [session?.user?.id]);
 
-  // Calculate the number of slides
-  const totalSlides = Math.ceil(courses.length / itemsPerView);
-  const canGoNext = currentIndex < totalSlides - 1;
-  const canGoPrev = currentIndex > 0;
-
-  // Slide navigation functions
+  // Slide navigation functions - Only for mobile/tablet
   const nextSlide = useCallback(() => {
-    if (canGoNext) {
+    if (!isDesktop && currentIndex < courses.length - 1) {
       setCurrentIndex((prev) => prev + 1);
-    } else {
-      setCurrentIndex(0);
     }
-  }, [canGoNext]);
+  }, [isDesktop, currentIndex, courses.length]);
 
   const prevSlide = useCallback(() => {
-    if (canGoPrev) {
+    if (!isDesktop && currentIndex > 0) {
       setCurrentIndex((prev) => prev - 1);
-    } else {
-      setCurrentIndex(totalSlides - 1);
     }
-  }, [canGoPrev, totalSlides]);
+  }, [isDesktop, currentIndex]);
 
   const goToSlide = (index: number) => {
-    if (index >= 0 && index < totalSlides) {
+    if (!isDesktop && index >= 0 && index < courses.length) {
       setCurrentIndex(index);
     }
   };
 
-  // Auto-scroll functionality
+  // Auto-scroll functionality - Only for mobile/tablet
   useEffect(() => {
-    if (
-      !isAutoScrolling ||
-      courses.length <= itemsPerView ||
-      totalSlides <= 1
-    ) {
+    if (isDesktop || !isAutoScrolling || courses.length <= 1) {
       return;
     }
 
@@ -186,42 +157,47 @@ export default function CourseCarousel({
       }
     };
   }, [
+    isDesktop,
     isAutoScrolling,
     currentIndex,
     courses.length,
     autoScrollInterval,
-    itemsPerView,
-    totalSlides,
     nextSlide,
   ]);
 
-  // Handle mouse/touch events
+  // Handle mouse/touch events - Only for mobile/tablet
   const handleMouseEnter = () => {
-    setIsAutoScrolling(false);
-    if (autoScrollTimerRef.current) {
-      clearTimeout(autoScrollTimerRef.current);
+    if (!isDesktop) {
+      setIsAutoScrolling(false);
+      if (autoScrollTimerRef.current) {
+        clearTimeout(autoScrollTimerRef.current);
+      }
     }
   };
 
   const handleMouseLeave = () => {
-    if (autoScroll) {
+    if (!isDesktop && autoScroll) {
       setIsAutoScrolling(true);
     }
   };
 
-  // Touch swipe functionality with better mobile handling
+  // Touch swipe functionality - Only for mobile/tablet
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.touches[0].clientX);
-    setTouchEndX(e.touches[0].clientX);
-    setIsAutoScrolling(false);
+    if (!isDesktop) {
+      setTouchStartX(e.touches[0].clientX);
+      setTouchEndX(e.touches[0].clientX);
+      setIsAutoScrolling(false);
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEndX(e.touches[0].clientX);
+    if (!isDesktop) {
+      setTouchEndX(e.touches[0].clientX);
+    }
   };
 
   const handleTouchEnd = () => {
-    if (!touchStartX || !touchEndX) return;
+    if (isDesktop || !touchStartX || !touchEndX) return;
 
     const distance = touchStartX - touchEndX;
     const minSwipeDistance = 50;
@@ -294,193 +270,277 @@ export default function CourseCarousel({
     );
   }
 
-  // Fix: Handle cases where totalSlides might be 0
-  const safeTotalSlides = Math.max(1, totalSlides);
-  const safeCurrentIndex = currentIndex >= safeTotalSlides ? 0 : currentIndex;
-
   return (
-    <div className="relative w-full max-w-7xl mx-auto px-2 sm:px-4 md:px-6">
-      {/* Carousel Container */}
-      <div
-        ref={carouselRef}
-        className="relative overflow-hidden"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Sliding container */}
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{
-            transform: `translateX(-${safeCurrentIndex * (100 / itemsPerView)}%)`,
-          }}
-        >
+    <div className="relative w-full max-w-7xl">
+      {/* Desktop: Grid layout (no carousel) */}
+      {isDesktop ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {courses.map((course, index) => (
-            <div
+            <CourseCard
               key={course.id}
-              className="flex-shrink-0 px-2 sm:px-3 py-3"
-              style={{
-                width: `${100 / itemsPerView}%`,
-                minWidth: `${100 / itemsPerView}%`,
-              }}
-            >
-              <div
-                className={`relative bg-white rounded-2xl overflow-hidden shadow-lg
-                transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl 
-                border border-gray-200/50 h-full flex flex-col
-                group hover:border-blue-300 mx-4 sm:mx-2 min-h-[300px]`}
-              >
-                {/* Premium badge with ribbon effect - Mobile optimized */}
-                <div
-                  className={`absolute top-2 right-0 z-20
-    ${
-      course.price > 0
-        ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-gray-900"
-        : "bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 text-white"
-    }
-    text-[10px] sm:text-[11px] font-bold py-[5px] sm:py-[6px] 
-    px-12 sm:px-14 shadow-lg transform rotate-45
-    translate-x-[35px] sm:translate-x-[40px] translate-y-[15px] sm:translate-y-[18px]
-    border-l border-r border-white/20`}
-                >
-                  {course.price > 0 ? "PREMIUM" : "COMING SOON"}
-                </div>
-
-                {/* Card content - Single structure for all cards */}
-                <div className="relative z-10 h-full flex flex-col">
-                  {/* Gradient header - same for all cards */}
-                  <div
-                    className={`relative text-white overflow-hidden flex flex-col justify-center flex-grow
-                      ${course.price === 0 ? "rounded-2xl" : "rounded-t-2xl"}
-                      ${
-                        course.price === 0
-                          ? "items-center text-center px-4 sm:px-6"
-                          : "px-4 sm:px-6 py-6 sm:py-10"
-                      }
-                    `}
-                    style={{ background: getCourseGradient(index) }}
-                  >
-                    {/* Subtle gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/10" />
-
-                    {/* Shine effect */}
-                    <div
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
-                      style={{ animation: "shine 3s ease-in-out infinite" }}
-                    />
-
-                    <div
-                      className={`relative z-10 ${course.price === 0 ? "py-8 sm:py-12" : ""}`}
-                    >
-                      <h3
-                        className={`font-bold leading-tight mb-2 sm:mb-3
-                          ${
-                            course.price === 0
-                              ? "text-2xl sm:text-3xl md:text-4xl"
-                              : "text-xl sm:text-2xl md:text-3xl line-clamp-2"
-                          }
-                        `}
-                      >
-                        {course.title}
-                      </h3>
-
-                      <p
-                        className={`text-white/90 font-medium uppercase tracking-wider
-                          ${course.price === 0 ? "text-base sm:text-lg md:text-xl" : "text-sm sm:text-base"}
-                        `}
-                      >
-                        {course.subtitle || "Mock Paper"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Price section - Only for premium courses */}
-                  {course.price > 0 && (
-                    <div className="p-3 sm:p-4 md:p-5 bg-white rounded-b-2xl border-t border-gray-100">
-                      <div className="mb-3 sm:mb-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
-                            ₹
-                            {Math.max(0, course.price - (course.discount || 0))}
-                          </span>
-                          {course.discount && course.discount > 0 && (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs sm:text-sm text-gray-400 line-through">
-                                ₹{course.price}
-                              </span>
-                              <span className="text-[10px] sm:text-xs font-semibold bg-green-100 text-green-600 px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
-                                Save ₹{course.discount}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {userCourses.includes(course.id) ? (
-                        <Link href={`/courses/${course.id}`} className="block">
-                          <Button
-                            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 
-                              hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold 
-                              py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-lg
-                              text-sm"
-                          >
-                            <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
-                            Continue Learning
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/checkout?courseId=${course.id}`}
-                          className="block"
-                        >
-                          <Button
-                            className="w-full bg-gradient-to-r from-[#001f54] to-[#034078] 
-                              hover:from-[#001a46] hover:to-[#023a6e] text-white font-semibold 
-                              py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-lg 
-                              hover:scale-[1.02] text-sm"
-                          >
-                            Enroll Now
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+              course={course}
+              index={index}
+              userCourses={userCourses}
+              getCourseGradient={getCourseGradient}
+            />
           ))}
         </div>
-      </div>
-
-      {/* Mobile navigation dots and swipe hint */}
-      {safeTotalSlides > 1 && (
+      ) : (
+        /* Mobile/Tablet: Carousel layout */
         <>
-          {/* Mobile swipe hint */}
-          <div className="block sm:hidden text-center mt-6 mb-2">
-            <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
-              <span className="animate-pulse">← Swipe →</span>
+          <div
+            ref={carouselRef}
+            className="relative overflow-hidden"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Sliding container */}
+            <div
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{
+                transform: `translateX(-${currentIndex * 100}%)`,
+              }}
+            >
+              {courses.map((course, index) => (
+                <div
+                  key={course.id}
+                  className="flex-shrink-0 w-full px-2 sm:px-3 md:px-4 py-3"
+                >
+                  <CourseCard
+                    course={course}
+                    index={index}
+                    userCourses={userCourses}
+                    getCourseGradient={getCourseGradient}
+                    isMobile={true}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Dots Indicator - Mobile optimized */}
-          <div className="flex justify-center mt-4 sm:mt-6 space-x-2 sm:space-x-3">
-            {Array.from({ length: safeTotalSlides }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`transition-all duration-300 rounded-full ${
-                  index === safeCurrentIndex
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 w-6 sm:w-8 md:w-10 h-1.5 sm:h-3"
-                    : "bg-gray-300 hover:bg-gray-400 w-1.5 sm:w-3 h-1.5 sm:h-3"
-                }`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
-          </div>
+          {/* Mobile navigation dots */}
+          {courses.length > 1 && (
+            <>
+              {/* Mobile swipe hint */}
+              <div className="block sm:hidden text-center mt-6 mb-2">
+                <div className="text-xs text-gray-500 flex items-center justify-center gap-2">
+                  <span className="animate-pulse">← Swipe →</span>
+                </div>
+              </div>
+
+              {/* Dots Indicator - Mobile only */}
+              <div className="flex justify-center mt-4 space-x-2">
+                {courses.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`transition-all duration-300 rounded-full ${
+                      index === currentIndex
+                        ? "bg-gradient-to-r from-blue-600 to-purple-600 w-6 h-1.5"
+                        : "bg-gray-300 hover:bg-gray-400 w-1.5 h-1.5"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </>
       )}
+    </div>
+  );
+}
+
+// Separate CourseCard component for reusability
+interface CourseCardProps {
+  course: Course;
+  index: number;
+  userCourses: string[];
+  getCourseGradient: (index: number) => string;
+  isMobile?: boolean;
+}
+
+function CourseCard({
+  course,
+  index,
+  userCourses,
+  getCourseGradient,
+  isMobile = false,
+}: CourseCardProps) {
+  const isComingSoon = course.price === 0;
+  const hasThumbnail = course.thumbnailUrl && course.thumbnailUrl.trim() !== "";
+  const showImage = !isComingSoon && hasThumbnail;
+
+  return (
+    <div
+      className={`relative bg-white rounded-2xl overflow-hidden shadow-lg
+        transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl 
+        border border-gray-200/50 h-full flex flex-col
+        group hover:border-blue-300 mx-4 sm:mx-2 min-h-[300px]`}
+    >
+      {/* Premium badge with ribbon effect - Hide if image is displayed */}
+      {!showImage && (
+        <div
+          className={`absolute top-2 right-0 z-20
+            ${
+              isComingSoon
+                ? "bg-gradient-to-r from-rose-600 via-rose-500 to-rose-600 text-white"
+                : "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-gray-900"
+            }
+            text-[10px] sm:text-[11px] font-bold py-[5px] sm:py-[6px] 
+            px-12 sm:px-14 shadow-lg transform rotate-45
+            translate-x-[35px] sm:translate-x-[40px] translate-y-[15px] sm:translate-y-[18px]
+            border-l border-r border-white/20`}
+        >
+          {isComingSoon ? "COMING SOON" : "PREMIUM"}
+        </div>
+      )}
+
+      {/* Card content - Single structure for all cards */}
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Image or Gradient header */}
+        <div
+          className={`relative overflow-hidden flex flex-col justify-center flex-grow
+            ${isComingSoon ? "rounded-2xl" : "rounded-t-2xl"}
+          `}
+        >
+          {/* If course has an image and is NOT coming soon, show image without title */}
+          {showImage ? (
+            <div className="relative w-full aspect-video">
+              {" "}
+              {/* 16:9 aspect ratio */}
+              <Image
+                src={course.thumbnailUrl!}
+                alt={course.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 100vw,
+             (max-width: 1024px) 50vw,
+             33vw"
+                priority={index < 3}
+              />
+              {/* subtle overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
+            </div>
+          ) : (
+            /* Show gradient with title for coming soon or courses without image */
+            <>
+              <div
+                className="absolute inset-0"
+                style={{ background: getCourseGradient(index) }}
+              />
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-black/10" />
+              {/* Shine effect */}
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                style={{
+                  animation: "shine 3s ease-in-out infinite",
+                }}
+              />
+              <div
+                className={`relative z-10 ${isComingSoon ? "py-8 sm:py-12" : "p-4 sm:p-6"}`}
+              >
+                <h3
+                  className={`font-bold text-white leading-tight mb-2 sm:mb-3 ${
+                    isComingSoon ? "text-center" : "text-left"
+                  }
+        ${
+          isComingSoon
+            ? "text-2xl sm:text-3xl md:text-4xl"
+            : "text-xl sm:text-2xl md:text-3xl line-clamp-2"
+        }
+      `}
+                >
+                  {course.title}
+                </h3>
+
+                {/* Show subtitle for coming soon courses */}
+                {isComingSoon && course.subtitle && (
+                  <p className="text-white/90 font-medium uppercase tracking-wider text-base sm:text-lg md:text-xl mt-2 text-left">
+                    {course.subtitle}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Price section - Only for premium courses (not coming soon) */}
+        {!isComingSoon && (
+          <div className="p-3 sm:p-4 md:p-5 bg-white rounded-b-2xl border-t border-gray-100 flex flex-col flex-grow">
+            {/* Course title - Show if image is displayed (since title is not on image) */}
+            {showImage && (
+              <div className="mb-3">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-2 text-left">
+                  {course.title}
+                </h3>
+              </div>
+            )}
+
+            {/* Subtitle/Description - Show for both image and non-image cards */}
+            {course.subtitle && (
+              <div className={`mb-3 ${showImage ? "" : "mb-2"}`}>
+                <p className="text-sm font-medium text-gray-600 line-clamp-2 text-left">
+                  {course.subtitle}
+                </p>
+              </div>
+            )}
+
+            <div className="mb-3 sm:mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
+                  ₹{Math.max(0, course.price - (course.discount || 0))}
+                </span>
+                {course.discount && course.discount > 0 && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs sm:text-sm text-gray-400 line-through">
+                      ₹{course.price}
+                    </span>
+                    <span className="text-[10px] sm:text-xs font-semibold bg-green-100 text-green-600 px-2 py-0.5 sm:py-1 rounded-full whitespace-nowrap">
+                      Save ₹{course.discount}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Button - Takes remaining space at bottom */}
+            <div className="mt-auto">
+              {userCourses.includes(course.id) ? (
+                <Link href={`/courses/${course.id}`} className="block">
+                  <Button
+                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 
+                      hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold 
+                      py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-lg
+                      text-sm"
+                  >
+                    <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-2" />
+                    Continue Learning
+                  </Button>
+                </Link>
+              ) : (
+                <Link
+                  href={`/checkout?courseId=${course.id}`}
+                  className="block"
+                >
+                  <Button
+                    className="w-full bg-gradient-to-r from-[#001f54] to-[#034078] 
+                      hover:from-[#001a46] hover:to-[#023a6e] text-white font-semibold 
+                      py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-300 hover:shadow-lg 
+                      hover:scale-[1.02] text-sm"
+                  >
+                    Enroll Now
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

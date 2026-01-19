@@ -94,7 +94,7 @@ const PaymentButton = ({
       }
 
       const options: RazorpayOptions = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+        key: process.env.RAZORPAY_KEY_ID || "",
         name: session?.user?.name || session?.user?.email || "Customer",
         description: `Payment for ${order.course?.title || "Course"}`,
         currency: order.currency || "INR",

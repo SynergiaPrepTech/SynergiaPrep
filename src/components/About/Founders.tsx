@@ -14,7 +14,7 @@ const founders = [
   },
   {
     name: "Mouli Kalsa",
-    role: "Director and CMO",
+    role: "Executive Director and CMO",
     image: "/assets/AboutUs/Founders/MouliKalsa.jpg",
     linkedin: "https://www.linkedin.com/in/mouli-kalsa-55587021b",
   },

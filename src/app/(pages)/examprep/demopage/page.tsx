@@ -132,6 +132,13 @@ const facultyMembers = [
     expertise: "Physics",
     image: "/assets/Faculty/najes riaz.png",
   },
+  {
+    id: 6,
+    name: "Mr. Abir Ghosh",
+    qualification: "B.E. ,Electrical Engineering, Jadavpur University",
+    expertise: "Mathematics",
+    image: "/assets/Faculty/abir ghosh.png",
+  },
 ];
 
 const DemoPage = () => {
@@ -352,47 +359,47 @@ const DemoPage = () => {
             <div className="lg:col-span-3 overflow-x-auto">
               <table className="w-full border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                 <thead>
-                  <tr className="bg-gray-50 text-sm text-gray-700">
-                    <th className="text-left px-6 py-4 border-r">
-                      Exam Course
-                    </th>
-
+                  <tr className="bg-gray-50 text-md text-gray-700">
+                    <th className="text-left px-6 py-4 border-r">Facilities</th>
                     <th className="px-6 py-4 border-r text-center">
-                      Price
-                      <div className="font-bold text-xl mt-1">₹499</div>
+                      <div className="font-bold text-xl mt-1">Free</div>
                     </th>
-
                     {/* Recommended */}
                     <th className="px-6 py-4 border-r text-center relative bg-blue-50">
                       <div className="absolute top-0 left-0 right-0 bg-blue-600 text-white text-xs font-semibold py-1">
                         RECOMMENDED
                       </div>
                       <div className="pt-6">
-                        Premium
-                        <div className="font-bold text-xl mt-1">₹1499</div>
+                        Paid
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 line-through text-lg">
+                              ₹1999
+                            </span>
+                            <span className="font-bold text-2xl text-blue-700">
+                              ₹899
+                            </span>
+                          </div>
+                          <div className="text-xs text-green-600 font-semibold mt-1">
+                            Save ₹1100
+                          </div>
+                        </div>
                       </div>
-                    </th>
-
-                    <th className="px-6 py-4 text-center">
-                      Premium
-                      <div className="font-bold text-xl mt-1">₹1599</div>
                     </th>
                   </tr>
                 </thead>
 
                 <tbody className="text-sm text-gray-700">
                   {[
-                    ["WBJEE 2025", true, true, true],
-                    ["Premium Questions", false, true, true],
+                    ["Live Classes for WBJEE 2026", false, true],
                     [
-                      "Offline Mock test facility in Kolkata",
-                      false,
-                      true,
-                      true,
+                      "Previous Years Questions (PYQ) practice",
+                      "3 years",
+                      "10 years",
                     ],
-                    ["Subject’s Chapter-wise practice", false, true, true],
-                    ["Subject’s Premiere practice", false, true, true],
-                  ].map(([label, b, p, pp], i) => (
+                    ["Mock Test", "Limited (3)", "15"],
+                    ["Sectional Mock", "1", "2"],
+                  ].map(([label, freeValue, paidValue], i) => (
                     <tr
                       key={i}
                       className="border-t hover:bg-gray-50 transition"
@@ -400,20 +407,26 @@ const DemoPage = () => {
                       <td className="px-6 py-4 border-r font-medium">
                         {label}
                       </td>
-
                       <td className="text-center border-r">
-                        {b ? <Check className="mx-auto text-green-600" /> : "—"}
-                      </td>
-
-                      <td className="text-center border-r bg-blue-50 shadow-inner">
-                        {p ? <Check className="mx-auto text-blue-600" /> : "—"}
-                      </td>
-
-                      <td className="text-center">
-                        {pp ? (
-                          <Check className="mx-auto text-green-600" />
+                        {typeof freeValue === "boolean" ? (
+                          freeValue ? (
+                            <Check className="mx-auto text-green-600" />
+                          ) : (
+                            "—"
+                          )
                         ) : (
-                          "—"
+                          freeValue
+                        )}
+                      </td>
+                      <td className="text-center border-r bg-blue-50">
+                        {typeof paidValue === "boolean" ? (
+                          paidValue ? (
+                            <Check className="mx-auto text-blue-600" />
+                          ) : (
+                            "—"
+                          )
+                        ) : (
+                          paidValue
                         )}
                       </td>
                     </tr>
@@ -422,24 +435,36 @@ const DemoPage = () => {
               </table>
             </div>
 
-            {/* Right Info Card */}
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm">
-              <div className="mb-6">
-                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                  🖥 Offline Mock test facility in Kolkata
-                </h4>
-                <p className="text-sm text-gray-700">
-                  Mock test + facility in Kolkata
-                </p>
+            {/* Right Side Cards - Separated into two */}
+            <div className="space-y-6">
+              {/* Top Card */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm">
+                <div className="mb-4">
+                  <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                    Offline Mock Test
+                  </h4>
+                  <p className="text-sm text-gray-700">Facility in Kolkata</p>
+                </div>
               </div>
 
-              <div>
-                <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                  ✍ Subject’s Chapter-wise practice
-                </h4>
-                <p className="text-sm text-gray-700">
-                  Mock test + reasoning & numerical practice
-                </p>
+              {/* Bottom Card */}
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-6 shadow-sm">
+                <div className="space-y-3">
+                  <h4 className="flex items-center gap-2 text-lg text-gray-700 font-medium">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                    Mock Test
+                  </h4>
+
+                  <h4 className="flex items-center gap-2 text-lg text-gray-700 font-medium">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                    Practice Test
+                  </h4>
+
+                  <h4 className="flex items-center gap-2 text-lg text-gray-700 font-medium">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                    PYQs
+                  </h4>
+                </div>
               </div>
             </div>
           </div>
