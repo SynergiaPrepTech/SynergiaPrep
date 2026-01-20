@@ -377,11 +377,11 @@ const DemoPage = () => {
                               ₹1999
                             </span>
                             <span className="font-bold text-2xl text-blue-700">
-                              ₹899
+                              ₹1199
                             </span>
                           </div>
                           <div className="text-xs text-green-600 font-semibold mt-1">
-                            Save ₹1100
+                            Save ₹800
                           </div>
                         </div>
                       </div>
@@ -398,7 +398,10 @@ const DemoPage = () => {
                       "10 years",
                     ],
                     ["Mock Test", "Limited (3)", "15"],
-                    ["Sectional Mock", "1", "2"],
+                    ["Sectional Mock", "1", "4"],
+                    ["WBJEE Counselling Support", false, true],
+                    ["Gap Certificate Preparation", true, true],
+                    ["Access To JU Alumni Network", false, true],
                   ].map(([label, freeValue, paidValue], i) => (
                     <tr
                       key={i}
