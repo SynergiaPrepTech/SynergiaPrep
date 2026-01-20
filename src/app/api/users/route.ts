@@ -64,6 +64,7 @@ export const GET = async (req: NextRequest) => {
               name: true,
               email: true,
               image: true,
+              ph_no:true,
             },
           },
           course: {
