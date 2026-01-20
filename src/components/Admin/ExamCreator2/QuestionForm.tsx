@@ -91,7 +91,7 @@ const createQuestionSchema = (questionType: QuestionType) => {
       {
         message: "Option must have either text or an image",
         path: ["text"],
-      }
+      },
     );
 
   switch (questionType) {
@@ -113,7 +113,7 @@ const createQuestionSchema = (questionType: QuestionType) => {
           {
             message: "Question must have either text or an image",
             path: ["text"],
-          }
+          },
         );
 
     case "MULTI":
@@ -137,7 +137,7 @@ const createQuestionSchema = (questionType: QuestionType) => {
           {
             message: "Question must have either text or an image",
             path: ["text"],
-          }
+          },
         );
 
     case "SINGLE":
@@ -152,7 +152,7 @@ const createQuestionSchema = (questionType: QuestionType) => {
               (options) => options.filter((opt) => opt.isCorrect).length === 1,
               {
                 message: "Exactly one option must be marked as correct",
-              }
+              },
             ),
           answerExplanationField: z.object({
             ...answerExplanationSchema,
@@ -168,7 +168,7 @@ const createQuestionSchema = (questionType: QuestionType) => {
           {
             message: "Question must have either text or an image",
             path: ["text"],
-          }
+          },
         );
   }
 };
@@ -279,7 +279,7 @@ export function QuestionForm({
 
   const handleImageUpload = async (
     e: ChangeEvent<HTMLInputElement>,
-    fieldPath: string
+    fieldPath: string,
   ): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -311,7 +311,7 @@ export function QuestionForm({
       try {
         if (editingIndex !== null) {
           setQuestions((prev) =>
-            prev.map((q, i) => (i === editingIndex ? formData : q))
+            prev.map((q, i) => (i === editingIndex ? formData : q)),
           );
           setEditingIndex(null);
         } else {
@@ -332,7 +332,7 @@ export function QuestionForm({
       if (!examSubjectId) return;
       try {
         const responseTypes = await fetch(
-          `/api/v1/subjects/${examSubjectId}/chapters`
+          `/api/v1/subjects/${examSubjectId}/chapters`,
         );
         const responseTypesJson = await responseTypes.json();
         setChapters(responseTypesJson.data);
@@ -645,7 +645,7 @@ export function QuestionForm({
                                           onChange={(e) =>
                                             handleImageUpload(
                                               e,
-                                              `options.${index}.imageFile`
+                                              `options.${index}.imageFile`,
                                             )
                                           }
                                           className="w-full border-2 border-gray-300"
@@ -662,7 +662,7 @@ export function QuestionForm({
                                                 size={"icon"}
                                                 onClick={() => {
                                                   handleDeleteImage(
-                                                    `options.${index}.imageFile`
+                                                    `options.${index}.imageFile`,
                                                   );
                                                 }}
                                                 className="h-8 w-8"
@@ -833,7 +833,7 @@ export function QuestionForm({
                             className="min-h-32 border-2 border-green-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
                             onClick={() => {
                               openLatexEditor(
-                                "answerExplanationField.explanation"
+                                "answerExplanationField.explanation",
                               );
                             }}
                           />
@@ -858,7 +858,7 @@ export function QuestionForm({
                                 onChange={(e) =>
                                   handleImageUpload(
                                     e,
-                                    "answerExplanationField.imageFile"
+                                    "answerExplanationField.imageFile",
                                   )
                                 }
                                 className="w-full border-2 border-gray-300 rounded-lg"
@@ -875,7 +875,7 @@ export function QuestionForm({
                                       size={"icon"}
                                       onClick={() => {
                                         handleDeleteImage(
-                                          "answerExplanationField.imageFile"
+                                          "answerExplanationField.imageFile",
                                         );
                                       }}
                                       className="h-8 w-8"
@@ -948,7 +948,7 @@ export function QuestionForm({
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto p-2">
+          <CardContent className="space-y-4 max-h-[calc(185vh-200px)] overflow-y-auto p-2">
             {questions.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
                 <div className="text-gray-400 mb-2">
