@@ -337,7 +337,7 @@ export default function EnrollmentsPage() {
                             marginTop: "0.25rem",
                           }}
                         >
-                          User ID: {enrollment.userId.substring(0, 8)}...
+                          User ID: {enrollment.userId}
                         </div>
                       </div>
                     </td>
@@ -347,6 +347,8 @@ export default function EnrollmentsPage() {
                         style={{ color: "#1976d2", textDecoration: "none" }}
                       >
                         {enrollment.user.email}
+                        <br />
+                        {enrollment.user.ph_no}
                       </a>
                     </td>
                     <td style={{ padding: "1rem" }}>
@@ -411,7 +413,7 @@ export default function EnrollmentsPage() {
                             fontFamily: "monospace",
                           }}
                         >
-                          {enrollment.paymentId.substring(0, 10)}...
+                          {enrollment.paymentId}
                         </div>
                       )}
                     </td>
