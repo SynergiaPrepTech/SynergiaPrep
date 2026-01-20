@@ -98,6 +98,28 @@ const TestListing: React.FC<TestListingProps> = ({
 
   const isLoggedIn = status === "authenticated";
 
+
+ const isAdminOrSuperAdmin =
+  session?.user?.role === "ADMIN" ||
+  session?.user?.role === "SUPERADMIN";
+
+const hasAccessToTest = (test: Test): boolean => {
+  // FREE tests → everyone logged in can access
+  if (test.accessType === "FREE") return true;
+
+  // Admins & Superadmins → always access
+  if (isAdminOrSuperAdmin) return true;
+
+  // Enrolled users → access
+  return (
+    session?.user?.enrollments?.some(
+      (e) => e.courseId === test.courseId
+    ) ?? false
+  );
+};
+
+
+
   const userEnrollments: Enrollment[] =
   session?.user?.enrollments ?? [];
 
@@ -121,36 +143,23 @@ const TestListing: React.FC<TestListingProps> = ({
   }, [type, apiEndpoint, title]);
 
   // Handle test start - check if user is logged in (YOUR LOGIC)
-  const handleStartTest = (test: Test) => {
-    // console.log(test);
-    // Not logged in → login
-    if (!isLoggedIn) {
-      const callbackUrl = `/exam?examId=${test.id}&type=${type}`;
-      router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-      return;
-    }
+ const handleStartTest = (test: Test) => {
+  if (!isLoggedIn) {
+    const callbackUrl = `/exam?examId=${test.id}&type=${type}`;
+    router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    return;
+  }
 
-    if(test.accessType === "FREE"){
-router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); return
-    }
+  if (!hasAccessToTest(test)) {
+    router.push(`/checkout?courseId=${test.courseId}`);
+    return;
+  }
 
-    
+  router.push(
+    `/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`
+  );
+};
 
-    // Check subscription
-    const isSubscribed = userEnrollments.some(
-  (e) => e.courseId === test.courseId
-);
-
-
-    // Not subscribed → subscribe page
-    if (!isSubscribed) {
-      router.push(`/checkout?courseId=${test.courseId}`);
-      return;
-    }
-
-    // Subscribed (FREE or PAID) → start test
-    router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`);
-  };
 
   // Extract unique subjects from available tests
   const uniqueSubjects = useMemo(() => {
@@ -218,10 +227,8 @@ router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); r
 
   const renderTestCard = (test: Test) => {
     const totalChapters = test.subjects.flatMap((s) => s.chapters).length;
-    const isSubscribed = session?.user?.enrollments?.some(
-      (enrollment) => enrollment.courseId === test.courseId
-
-    );
+    const isSubscribed = hasAccessToTest(test)
+;
 
     return (
       <div key={test.id} className="h-full group">
@@ -246,7 +253,8 @@ router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); r
 
           <CardContent className="flex-grow relative">
             {/* PAID Overlay */}
-            {test.accessType === "PAID" && !isSubscribed && (
+            {test.accessType === "PAID" && !hasAccessToTest(test) && (
+
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-2 bg-white px-6 py-4 rounded-xl shadow-lg">
                   <div className="text-white bg-red-600 p-2 rounded-full">
@@ -387,24 +395,20 @@ router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); r
               </Button>
             ) : (
               <Button
-                onClick={() => handleStartTest(test)}
-                className={`relative w-full font-medium transition ${
-                  isLoggedIn
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-amber-500 hover:bg-amber-600"
-                }`}
-              >
-                {session?.user?.enrollments?.some(
-                  (enrollment) => enrollment.courseId === test.courseId
+  onClick={() => handleStartTest(test)}
+  className={`w-full font-medium transition ${
+    isLoggedIn && !hasAccessToTest(test)
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-emerald-600 hover:bg-emerald-700"
+  } ${!isLoggedIn ? "!bg-amber-500" :""}`}
+>
+  {hasAccessToTest(test)
+    ? `Start ${getTestTypeText()}`
+    : !isLoggedIn
+    ? "Login & Subscribe To Unlock"
+    : "Subscribe To Start"}
+</Button>
 
-                )
-                  ? `Start ${getTestTypeText()}`
-                  : !isLoggedIn ? "Login & Subscribe To Unlock" : (
-                    <p className="absolute top-0 left-0 flex items-center justify-center rounded-md w-full h-full bg-red-500 text-white">
-                      Subscribe To Start
-                    </p>
-                  )}
-              </Button>
             )}
 
             {/* DeleteExamButton */}
@@ -422,10 +426,7 @@ router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); r
 
   const renderTestRow = (test: Test) => {
     const totalChapters = test.subjects.flatMap((s) => s.chapters).length;
-    const isSubscribed = session?.user?.enrollments?.some(
-      (enrollment) => enrollment.courseId === test.courseId
-
-    );
+    const isSubscribed = hasAccessToTest(test);
 
     return (
       <div key={test.id}>
@@ -556,10 +557,8 @@ router.push(`/exam?examId=${test.id}&type=${type}&courseId=${test.courseId}`); r
                   onClick={() => handleStartTest(test)}
                   className={`relative ${isLoggedIn ? "bg-emerald-600 hover:bg-emerald-700" : "bg-amber-500 hover:bg-amber-600"}`}
                 >
-                  {session?.user?.enrollments?.some(
-                    (enrollment) => enrollment.courseId === test.courseId
+                  {hasAccessToTest(test)
 
-                  )
                     ? `Start ${getTestTypeText()}`
                     : !isLoggedIn ? "Login & Subscribe" : (
                       <p className="absolute top-0 left-0 flex items-center justify-center rounded-md w-full h-full bg-red-500 text-white">
