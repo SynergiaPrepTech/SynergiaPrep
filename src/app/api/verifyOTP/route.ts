@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     }
 
     const otpMatch = await bcrypt.compare(otp, otpRecord?.otp);
-    if (otpMatch) {
+    if (!otpMatch) {
       return new Response(JSON.stringify({ error: "Invalid email or OTP" }), {
         status: 400,
       });
