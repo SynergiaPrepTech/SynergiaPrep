@@ -291,11 +291,11 @@ export default function CheckoutPage() {
                 </span>
               </div>
 
-              <div className="mb-6">
+              {/* <div className="mb-6">
                 <span className="text-sm text-gray-500">
                   {course.enrollmentCount} students enrolled
                 </span>
-              </div>
+              </div> */}
               
               <div className="mb-4">
                 <p className="text-gray-700 leading-relaxed">{course.description}</p>
