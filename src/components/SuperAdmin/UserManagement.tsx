@@ -63,9 +63,11 @@ import {
   Lock,
   CheckCircle,
   XCircle,
+  GraduationCap,
 } from "lucide-react";
 import { set } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: string;
@@ -126,6 +128,7 @@ const mockUsers: User[] = [
 ];
 
 export default function UserManagement() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -280,15 +283,24 @@ export default function UserManagement() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+          
           <p className="text-muted-foreground">
             Manage users, roles, and permissions for your platform.
           </p>
+
+          
+
         </div>
         {/* <Button onClick={() => setIsCreateDialogOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" />
           Add User
         </Button> */}
+
+         <button className=" flex flex-wrap gap-3 justify-center items-center bg-green-600 px-4 py-2 rounded md text-white !poppinsmd font-bold right-5 " onClick={()=>router.push('/superadmin/enrollments')}>View Enrollments<GraduationCap/> </button>
+         
       </div>
+
+
 
       {/* Filters */}
       <Card>

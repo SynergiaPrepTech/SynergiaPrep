@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
-import Image from "next/image";
+import { useSearchParams, useRouter } from "next/navigation";
 import InfoPage from "./InfoPage";
 import QuizPage from "./QuizPage";
 import ExamSummary from "./ExamSummary";
@@ -17,11 +16,25 @@ import { Button } from "@/components/ui/button";
 import QuizHeader from "./QuizHeader";
 import { submitAttempt } from "@/lib/evaluation-hooks/report-functions";
 import StudyTracker from "../StudyTracker";
-import { ExamGuard } from "../ExamGuard";
+
+// Define the enrollment type to match your session structure
+interface Enrollment {
+  courseId: string;
+  // Add other enrollment properties if needed
+}
+
+// Extend the session user type to include enrollments
+declare module "next-auth" {
+  interface User {
+    id: string;
+    enrollments?: Enrollment[];
+  }
+}
 
 const QuizApp = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState("info");
   const [currentQuestion, setCurrentQuestion] = useState<[number, number]>([
     0, 0,
@@ -41,10 +54,8 @@ const QuizApp = () => {
 
   const examId = searchParams.get("examId");
 
-  const[accessType, setAccessType] =useState("");
-  const[courseId, setCourseId] =useState("");
- 
-  
+  const [accessType, setAccessType] = useState("");
+  const [courseId, setCourseId] = useState("");
 
   const [ExamData, setExam] = useState<Exam>({} as Exam);
 
@@ -82,35 +93,55 @@ const QuizApp = () => {
     },
   ];
 
+  // Check user enrollment and redirect if not enrolled in the course
+  useEffect(() => {
+    if (status === "loading") return; // Wait for session to load
+    
+    if (status === "unauthenticated") {
+      router.push("/"); // Redirect to home if not authenticated
+      return;
+    }
+
+    if (status === "authenticated" && session?.user && courseId) {
+      // Check if user is subscribed to this course
+      const isSubscribed = session.user.enrollments?.some(
+        (e: Enrollment) => e.courseId === courseId
+      );
+      
+      if (!isSubscribed) {
+        router.push("/"); // Redirect to home if not subscribed
+        return;
+      }
+    }
+  }, [session, status, courseId, router]);
+
   // Fetch exam data
   useEffect(() => {
     const fetchExamData = async () => {
-      const response = await fetch(`/api/v1/exams/${examId}`);
-      const data = await response.json();
-      // console.log("exam data:",data.data)
-      setAccessType(data.data.accessType)
-      setCourseId(data.data.courseId);
-      setExam(data)
+      try {
+        const response = await fetch(`/api/v1/exams/${examId}`);
+        const data = await response.json();
+        
+        if (!response.ok || data.status !== "success") {
+          setFetcherror(true);
+          setLoading(false);
+          return;
+        }
 
-      
+        setAccessType(data.data.accessType);
+        setCourseId(data.data.courseId);
+        setExam(data.data);
 
-
-setAccessType(data?.data?.accessType);
-
-      setLoading(false);
-      if (!response.ok) {
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching exam data:", error);
         setFetcherror(true);
-        return;
-      } else if (data.status !== "success") {
-        setFetcherror(true);
-        return;
+        setLoading(false);
       }
-      setExam(data.data);
-       setCourseId(data.data.courseId);
     };
 
     if (examId) fetchExamData();
-  }, [examId,accessType,courseId]);
+  }, [examId]);
 
   // Pre-populate UserResponse with all questions and default answers
   useEffect(() => {
@@ -172,7 +203,7 @@ setAccessType(data?.data?.accessType);
     const questionData =
       ExamData.examSections[sectionIndex].questions[questionIndex];
     const currentSectionData = ExamData.examSections[currentQuestion[0]];
-    // For numerical questions, we won’t use this handler.
+    // For numerical questions, we won't use this handler.
     if (questionData.options.length === 0) return;
 
     const optionId =
@@ -355,79 +386,72 @@ setAccessType(data?.data?.accessType);
     }
   };
 
- const onSubmit = async (ans: boolean) => {
-  if (ans) {
-    const updatedResponse = {
-      ...UserResponse,
-      userId: session?.user.id ?? "",
-    };
-
-    // console.log("User Response: ", updatedResponse);
-
-    try {
-      const response = await fetch(`/api/v1/user-submissions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedResponse),
-      });
-
-      const result = await response.json();
-      // console.log(result);
-
-      // Destructuring data from result object
-      const {
-        userId,
-        examId,
-        id: userSubmissionId,
-      } = result.data;
-
-      const report = (await submitAttempt(
-        userId,
-        examId,
-        userSubmissionId,
-        ExamData.totalDurationInSeconds - timeLeft
-      )) as {
-        data: {
-          examId: string; // Note: lowercase 'd'
-          userId: string;
-          userSubmissionId: string;
-          score: number;
-          accuracy: number;
-          attemptedQuestions: number;
-          correctAnswers: number;
-          incorrectAnswers: number;
-          timeTaken: number;
-          percentile: number;
-          rank: number;
-        };
+  const onSubmit = async (ans: boolean) => {
+    if (ans) {
+      const updatedResponse = {
+        ...UserResponse,
+        userId: session?.user.id ?? "",
       };
 
-      // console.log("Report:", report);
-      
-      // Fix: Use examId (lowercase 'd') instead of examID
-      const generateReport = await fetch(
-        `/api/v1/reports/exams/${report.data.examId}/generate-report`,
-        {
+      try {
+        const response = await fetch(`/api/v1/user-submissions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: report.data.userId,
-            userSubmissionId: report.data.userSubmissionId,
-          }),
-        }
-      );
-      
-      const generateReportData = await generateReport.json();
-      // console.log("Generate Report:", generateReportData);
-      setCurrentStep("submitted");
-      setUserResponse(updatedResponse);
-    } catch (error) {
-      console.error("Error submitting attempt:", error);
+          body: JSON.stringify(updatedResponse),
+        });
+
+        const result = await response.json();
+
+        const {
+          userId,
+          examId,
+          id: userSubmissionId,
+        } = result.data;
+
+        const report = (await submitAttempt(
+          userId,
+          examId,
+          userSubmissionId,
+          ExamData.totalDurationInSeconds - timeLeft
+        )) as {
+          data: {
+            examId: string;
+            userId: string;
+            userSubmissionId: string;
+            score: number;
+            accuracy: number;
+            attemptedQuestions: number;
+            correctAnswers: number;
+            incorrectAnswers: number;
+            timeTaken: number;
+            percentile: number;
+            rank: number;
+          };
+        };
+
+        const generateReport = await fetch(
+          `/api/v1/reports/exams/${report.data.examId}/generate-report`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: report.data.userId,
+              userSubmissionId: report.data.userSubmissionId,
+            }),
+          }
+        );
+        
+        const generateReportData = await generateReport.json();
+        setCurrentStep("submitted");
+        setUserResponse(updatedResponse);
+      } catch (error) {
+        console.error("Error submitting attempt:", error);
+      }
+    } else {
+      setCurrentStep("quiz");
     }
-  } else {
-    setCurrentStep("quiz");
-  }
-};
+  };
+
   const getQuestionStatus = (
     sectionNumber: number,
     questionNumber: number,
@@ -453,98 +477,105 @@ setAccessType(data?.data?.accessType);
     return "not-visited";
   };
 
+  // Show loading while checking authentication and enrollment
+  if (status === "loading" || loading) {
+    return (
+      <div className="container flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+          <h1 className="text-4xl font-bold mb-4">Loading...</h1>
+          <p className="text-xl">Please wait while we prepare your exam.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show nothing while redirecting
+  if (status === "unauthenticated" || 
+      (status === "authenticated" && courseId && 
+       !session?.user.enrollments?.some((e: Enrollment) => e.courseId === courseId))) {
+    return null;
+  }
+
   return (
     <StudyTracker>
-       {/* <ExamGuard courseId={courseId} accessType={accessType} /> */}
+      <div className="min-h-screen">
+        {session && currentStep !== "submitted" && (
+          <QuizHeader
+            session={session}
+            currentStep={currentStep}
+            setCurrentStep={setCurrentStep}
+            timeLeft={timeLeft}
+            setTimeLeft={setTimeLeft}
+          />
+        )}
 
-    <div className="min-h-screen">
-      {session && currentStep !== "submitted" && (
-        <QuizHeader
-          session={session}
-          // time={ExamData.totalDurationInSeconds}
-          currentStep={currentStep}
-          setCurrentStep={setCurrentStep}
-          timeLeft={timeLeft}
-          setTimeLeft={setTimeLeft}
-        />
-      )}
-
-      {loading && (
-        <div className="container flex items-center justify-center h-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-            <h1 className="text-4xl font-bold mb-4">Loading...</h1>
-            <p className="text-xl">Please wait while we prepare your exam.</p>
+        {fetcherror && (
+          <div className="container flex items-center justify-center h-full">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold mb-4 text-red-600">Error!</h1>
+              <p className="text-xl text-gray-700">
+                Oops! Something went wrong while fetching the exam data.
+              </p>
+              <p className="text-md text-gray-500 mt-2">
+                Please check your internet connection and try again.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Retry
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {fetcherror && (
-        <div className="container flex items-center justify-center h-full">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold mb-4 text-red-600">Error!</h1>
-            <p className="text-xl text-gray-700">
-              Oops! Something went wrong while fetching the exam data.
-            </p>
-            <p className="text-md text-gray-500 mt-2">
-              Please check your internet connection and try again.
-            </p>
-            <Button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      )}
+        {!fetcherror && !loading && currentStep === "info" && (
+          <InfoPage
+            acceptedTerms={acceptedTerms}
+            setAcceptedTerms={setAcceptedTerms}
+            handleStart={handleStart}
+            loading={loading}
+            Exam={ExamData}
+            questionStatuses={questionStatuses}
+          />
+        )}
 
-      {!fetcherror && !loading && currentStep === "info" && (
-        <InfoPage
-          acceptedTerms={acceptedTerms}
-          setAcceptedTerms={setAcceptedTerms}
-          handleStart={handleStart}
-          loading={loading}
-          Exam={ExamData}
-          questionStatuses={questionStatuses}
-        />
-      )}
+        {!fetcherror && !loading && currentStep === "quiz" && (
+          <QuizPage
+            Exam={ExamData}
+            currentQuestion={currentQuestion}
+            setCurrentQuestion={setCurrentQuestion}
+            currentanswer={currentanswer}
+            handleAnswer={handleAnswer}
+            updateCurrentAnswer={updateCurrentAnswer}
+            handleSaveAndNext={handleSaveAndNext}
+            handleClearAnswer={handleClearAnswer}
+            handleMarkForReview={handleMarkForReview}
+            handleNextQuestion={handleNextQuestion}
+            handlePrevQuestion={handlePrevQuestion}
+            setCurrentStep={setCurrentStep}
+            session={{ userId: session?.user.id ?? "" }}
+            visitedQuestions={visitedQuestions}
+            setVisitedQuestions={setVisitedQuestions}
+            getQuestionStatus={getQuestionStatus}
+          />
+        )}
 
-      {!fetcherror && !loading && currentStep === "quiz" && (
-        <QuizPage
-          Exam={ExamData}
-          currentQuestion={currentQuestion}
-          setCurrentQuestion={setCurrentQuestion}
-          currentanswer={currentanswer}
-          handleAnswer={handleAnswer}
-          updateCurrentAnswer={updateCurrentAnswer}
-          handleSaveAndNext={handleSaveAndNext}
-          handleClearAnswer={handleClearAnswer}
-          handleMarkForReview={handleMarkForReview}
-          handleNextQuestion={handleNextQuestion}
-          handlePrevQuestion={handlePrevQuestion}
-          setCurrentStep={setCurrentStep}
-          session={{ userId: session?.user.id ?? "" }}
-          visitedQuestions={visitedQuestions}
-          setVisitedQuestions={setVisitedQuestions}
-          getQuestionStatus={getQuestionStatus}
-        />
-      )}
+        {!fetcherror && !loading && currentStep === "summary" && (
+          <ExamSummary
+            Exam={ExamData}
+            UserResponse={UserResponse}
+            markedForReview={markedForReview}
+            visitedQuestions={visitedQuestions}
+            onSubmit={onSubmit}
+          />
+        )}
 
-      {!fetcherror && !loading && currentStep === "summary" && (
-        <ExamSummary
-          Exam={ExamData}
-          UserResponse={UserResponse}
-          markedForReview={markedForReview}
-          visitedQuestions={visitedQuestions}
-          onSubmit={onSubmit}
-        />
-      )}
-
-      {!fetcherror && !loading && currentStep === "submitted" && (
-        <SubmittedPage />
-      )}
-    </div>
+        {!fetcherror && !loading && currentStep === "submitted" && (
+          <SubmittedPage />
+        )}
+      </div>
     </StudyTracker>
   );
 };

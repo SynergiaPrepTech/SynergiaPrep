@@ -4,11 +4,14 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { Users, BookOpen, DollarSign, Activity } from "lucide-react"
+import { Users, BookOpen, DollarSign, Activity, GraduationCap } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"]
 
 export default function DashboardOverview() {
+
+  const router = useRouter()
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalCourses: 0,
@@ -148,6 +151,7 @@ export default function DashboardOverview() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">Overview of your education platform&apos;s performance and metrics.</p>
+        
       </div>
 
       {/* Stats Cards */}
