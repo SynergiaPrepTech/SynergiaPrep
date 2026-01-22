@@ -290,7 +290,7 @@ export const POST = async (req: NextRequest) => {
         return updatedExam;
       },
       {
-        timeout: 30000,
+        timeout: 300000,
       }
     );
 

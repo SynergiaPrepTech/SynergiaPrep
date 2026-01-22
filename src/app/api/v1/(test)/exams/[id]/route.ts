@@ -269,7 +269,7 @@ export const PUT = async (
 
         return finalExam;
       },
-      { timeout: 30000 }
+      { timeout: 300000 }
     );
 
     const statusMessage = isDraft

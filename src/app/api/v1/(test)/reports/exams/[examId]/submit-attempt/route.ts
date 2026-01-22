@@ -111,7 +111,7 @@ export async function POST(
           include: { analysisReport: true },
         });
       },
-      { timeout: 30000 }
+      { timeout: 300000 }
     );
 
     return successResponse(result, "Attempt submitted successfully", 200);

@@ -578,7 +578,7 @@ model Coupon {
 
 model ExamDraft {
   id        String   @id @default(uuid())
-  userId    String
+  userId    String?
   data      Json     // full draft
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
