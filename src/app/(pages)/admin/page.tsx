@@ -3,19 +3,132 @@
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User } from "lucide-react";
-// import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// import ExamCreator from "@/components/Admin/ExamCreator/ExamCreator";
 import ExamCreator from "@/components/Admin/ExamCreator2/ExamCreator";
 import OtherExamForms from "@/components/Admin/Other/OtherExamForms";
 import Drafts from "@/components/Admin/Drafts/Drafts";
+import { DraftExam, ExamDetails } from "@/types/draft";
 
-// Define the Section types
-const SECTION_TYPES = [
-  { label: "Single Choice", value: "singlecorrect" },
-  { label: "Multi Choice", value: "multicorrect" },
-  { label: "Integer", value: "integer" },
-];
+// Use the DraftType from the component directly if possible
+// Or define it based on what ExamCreator expects
+type DraftType = {
+  id: string;
+  examDetails: ExamDetails;
+  examSections: Array<{
+    name: string;
+    description: string;
+    isAllQuestionsMandatory: boolean;
+    numberOfQuestionsToAttempt: number;
+    sectionConfigId: string;
+    sectionConfig: string;
+    subjectId: string;
+    subject: string;
+    questions: Array<{
+      text: string;
+      imageUrl?: string | null;
+      chapterId: string;
+      difficultyLevel: "EASY" | "MEDIUM" | "HARD";
+      options?: Array<{
+        isCorrect: boolean;
+        text: string;
+        imageUrl?: string | null;
+      }>;
+      answerExplanationField: {
+        text?: string;
+        value?: string;
+        explanation?: string;
+        imageUrl?: string | null;
+      };
+    }>;
+  }>;
+  savedAt: string;
+  currentStep: string;
+};
+
+// Define a type for LocalImage from your types/draft.ts
+interface LocalImage {
+  file: File;
+  previewUrl: string;
+}
+
+// Define a union type for possible image input
+type ImageInput = LocalImage | File | string | null | undefined;
+
+// Helper function to convert LocalImage to imageUrl string
+const convertLocalImageToUrl = (imageFile: ImageInput): string | null => {
+  if (!imageFile) return null;
+  
+  // If it already has a previewUrl (LocalImage type)
+  if (typeof imageFile === 'object' && 'previewUrl' in imageFile) {
+    return (imageFile as LocalImage).previewUrl;
+  }
+  
+  // If it's already a string URL
+  if (typeof imageFile === 'string') {
+    return imageFile;
+  }
+  
+  // If it's a File object, create object URL
+  if (imageFile instanceof File) {
+    return URL.createObjectURL(imageFile);
+  }
+  
+  return null;
+};
+
+// Main conversion function - Convert DraftExam to DraftType
+const convertDraftToExamCreatorFormat = (
+  draft: DraftExam
+): DraftType => {
+  return {
+    id: draft.id,
+    examDetails: {
+      title: draft.examDetails.title,
+      instruction: draft.examDetails.instruction,
+      description: draft.examDetails.description,
+      examTypeId: draft.examDetails.examTypeId,
+      examType: draft.examDetails.examType,
+      accessType: draft.examDetails.accessType,
+      examCategoryId: draft.examDetails.examCategoryId,
+      examCategory: draft.examDetails.examCategory,
+      // subjectId: draft.examDetails.subjectId || "",
+      // subject: draft.examDetails.subject || "",
+      topicId: draft.examDetails.topicId || "",
+      topic: draft.examDetails.topic || "",
+      totalDurationInSeconds: draft.examDetails.totalDurationInSeconds || 0,
+      courseId: draft.examDetails.courseId || "",
+    },
+    examSections: draft.examSections.map(section => ({
+      name: section.name,
+      description: section.description,
+      isAllQuestionsMandatory: section.isAllQuestionsMandatory,
+      numberOfQuestionsToAttempt: section.numberOfQuestionsToAttempt,
+      sectionConfigId: section.sectionConfigId,
+      sectionConfig: section.sectionConfig,
+      subjectId: section.subjectId,
+      subject: section.subject,
+      questions: section.questions.map(question => ({
+        text: question.text,
+        imageUrl: convertLocalImageToUrl(question.imageFile),
+        chapterId: question.chapterId,
+        difficultyLevel: question.difficultyLevel,
+        options: question.options?.map(option => ({
+          isCorrect: option.isCorrect,
+          text: option.text || "",
+          imageUrl: convertLocalImageToUrl(option.imageFile),
+        })),
+        answerExplanationField: {
+          text: question.answerExplanationField.text,
+          value: question.answerExplanationField.value,
+          explanation: question.answerExplanationField.explanation,
+          imageUrl: convertLocalImageToUrl(question.answerExplanationField.imageFile),
+        },
+      })),
+    })),
+    savedAt: draft.savedAt,
+    currentStep: draft.currentStep,
+  };
+};
 
 const Header = () => (
   <div className="w-full bg-muted border-b">
@@ -31,7 +144,7 @@ const Header = () => (
 
 const Page = () => {
   const [currentTab, setCurrentTab] = useState("examcreate");
-  const [draftToResume, setDraftToResume] = useState<DraftExam | null>(null);
+  const [draftToResume, setDraftToResume] = useState<DraftType | null>(null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -48,20 +161,24 @@ const Page = () => {
             <TabsTrigger value="drafts">Drafts</TabsTrigger>
           </TabsList>
 
+          {/* Fixed the comment syntax and removed type assertion */}
           <TabsContent value="examcreate" className="w-full">
             <ExamCreator
               draft={draftToResume}
               onFinish={() => setDraftToResume(null)}
             />
           </TabsContent>
+          
           <TabsContent value="others">
             <OtherExamForms />
           </TabsContent>
+          
           <TabsContent value="drafts">
             <Drafts
-              onResume={(draft) => {
-                setDraftToResume(draft);
-                setCurrentTab("examcreate"); // switch to ExamCreator tab
+              onResume={(draft: DraftExam) => {
+                const convertedDraft = convertDraftToExamCreatorFormat(draft);
+                setDraftToResume(convertedDraft);
+                setCurrentTab("examcreate");
               }}
             />
           </TabsContent>

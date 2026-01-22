@@ -948,7 +948,7 @@ export function QuestionForm({
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[calc(185vh-200px)] overflow-y-auto p-2">
+          <CardContent className="space-y-4 max-h-[calc(225vh-200px)] overflow-y-scroll p-2">
             {questions.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
                 <div className="text-gray-400 mb-2">

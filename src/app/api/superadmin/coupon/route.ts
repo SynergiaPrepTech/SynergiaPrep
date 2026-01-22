@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkAuthAdmin } from "@/lib/utils/auth-check-in-exam-api";
+import { checkAuthAdmin, checkAuthSuperAdmin } from "@/lib/utils/auth-check-in-exam-api";
 
 export async function POST(req: Request) {
-    const authResponse = await checkAuthAdmin();
-  if (authResponse) return authResponse;
+   const authResponse = await checkAuthSuperAdmin();
+       if(authResponse) return authResponse;
   try {
     const data = await req.json();
 

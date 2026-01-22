@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { checkAuthAdmin } from "@/lib/utils/auth-check-in-exam-api";
+import { checkAuthAdmin, checkAuthSuperAdmin } from "@/lib/utils/auth-check-in-exam-api";
 
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> } // Change here
 ) {
   try {
-    const authResponse = await checkAuthAdmin();
-    if (authResponse) return authResponse;
+   const authResponse = await checkAuthSuperAdmin();
+       if(authResponse) return authResponse;
     
     // Await the params promise
     const resolvedParams = await params; // Add this line
@@ -38,8 +38,8 @@ export async function DELETE(
   _: Request,
   { params }: { params: Promise<{ id: string }> } // Change here
 ) {
-  const authResponse = await checkAuthAdmin();
-  if (authResponse) return authResponse;
+ const authResponse = await checkAuthSuperAdmin();
+     if(authResponse) return authResponse;
   
   try {
     // Await the params promise
