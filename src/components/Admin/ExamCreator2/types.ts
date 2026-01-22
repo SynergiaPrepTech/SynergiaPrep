@@ -88,6 +88,7 @@ interface DraftExam {
   examDetails: ExamDetails;
   examSections: SectionFormState[];
   savedAt: string;
+  currentStep: string;
 }
 
 // When adding/editing questions, just store them with local files
