@@ -280,6 +280,10 @@ const ExamCreator = ({
         toast.success("Draft saved to cloud", {
           description: cloudDraftId ? `Draft ID: ${cloudDraftId.slice(0, 8)}...` : undefined,
         });
+
+        localStorage.removeItem(LOCAL_STORAGE_KEY)
+        // localStorage.removeItem('draft_exam')
+
       } catch (error: unknown) {
         toast.error("Failed to save to cloud", {
           description: "Your draft is saved locally and will sync when online",

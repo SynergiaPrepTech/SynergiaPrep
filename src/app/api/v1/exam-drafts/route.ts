@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
           draft = await db.examDraft.update({
             where: { 
               id: draftId,
-              userId: userId,
             },
             data: { 
               data,
@@ -45,10 +44,7 @@ export async function POST(req: NextRequest) {
         } else {
           // Draft doesn't exist, create new one
           draft = await db.examDraft.create({
-            data: {
-              userId,
-              data,
-            },
+            data: data,
           });
           console.log("New draft created (ID not found):", draft.id);
         }
@@ -59,7 +55,7 @@ export async function POST(req: NextRequest) {
           data: {
             userId,
             data,
-          },
+        },
         });
         console.log("Created new draft after update error:", draft.id);
       }

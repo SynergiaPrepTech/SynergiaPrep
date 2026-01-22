@@ -154,9 +154,6 @@ setCourses(coursesData.data || []);
       
       } catch (error) {
         console.error("Error fetching exam details:", error);
-        alert(
-          "There was an issue fetching the exam details. Please try again."
-        );
       }
 
       setIsSubmit(false)

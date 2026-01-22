@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import InfoPage from "./InfoPage";
@@ -16,56 +16,54 @@ import { Button } from "@/components/ui/button";
 import QuizHeader from "./QuizHeader";
 import { submitAttempt } from "@/lib/evaluation-hooks/report-functions";
 import StudyTracker from "../StudyTracker";
+import { toast } from "sonner";
 
-// Define the enrollment type to match your session structure
+/* ---------------- TYPES ---------------- */
+
 interface Enrollment {
   courseId: string;
-  // Add other enrollment properties if needed
 }
 
-// Extend the session user type to include enrollments
 declare module "next-auth" {
   interface User {
     id: string;
+    role?: "ADMIN" | "SUPERADMIN" | "USER";
     enrollments?: Enrollment[];
   }
 }
+
+/* ---------------- COMPONENT ---------------- */
 
 const QuizApp = () => {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState("info");
-  const [currentQuestion, setCurrentQuestion] = useState<[number, number]>([
-    0, 0,
-  ]);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [markedForReview, setMarkedForReview] = useState(new Set<string>());
-  const [visitedQuestions, setVisitedQuestions] = useState(
-    new Set<string>(["0-0"])
-  );
+
+  const examId = searchParams.get("examId");
+
   const [loading, setLoading] = useState(true);
-  const [fetcherror, setFetcherror] = useState(false);
-  const [currentanswer, setCurrentanswer] = useState<{
+  const [fetchError, setFetchError] = useState(false);
+  const [currentStep, setCurrentStep] = useState<"info" | "quiz" | "summary" | "submitted">("info");
+
+  const [courseId, setCourseId] = useState("");
+  const [ExamData, setExam] = useState<Exam>({} as Exam);
+
+  const [UserResponse, setUserResponse] = useState<IUserResponse>({
+    userId: "",
+    examId: examId ?? "",
+    userAnswerPerQuestions: [],
+  });
+
+  const [currentQuestion, setCurrentQuestion] = useState<[number, number]>([0, 0]);
+  const [currentAnswer, setCurrentAnswer] = useState<{
     value?: string;
     questionId: string;
     chosenOptions?: { optionId: string }[];
   } | null>(null);
-
-  const examId = searchParams.get("examId");
-
-  const [accessType, setAccessType] = useState("");
-  const [courseId, setCourseId] = useState("");
-
-  const [ExamData, setExam] = useState<Exam>({} as Exam);
-
-  const [UserResponse, setUserResponse] = useState<IUserResponse>({
-    userId: session?.user.id ?? "",
-    examId: examId ?? "",
-    userAnswerPerQuestions: [] as UserAnswer[],
-  });
-
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [visitedQuestions, setVisitedQuestions] = useState(new Set<string>(["0-0"]));
+  const [markedForReview, setMarkedForReview] = useState(new Set<string>());
+  const [timeLeft, setTimeLeft] = useState(0);
 
   const questionStatuses = [
     {
@@ -77,122 +75,132 @@ const QuizApp = () => {
       text: "You have not answered the question.",
     },
     {
-      className:
-        "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
+      className: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
       text: "You have answered the question.",
     },
     {
-      className:
-        "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+      className: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
       text: "You have NOT answered the question, but have marked the question for review.",
     },
     {
-      className:
-        "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100",
+      className: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100",
       text: "The question(s) 'Answered and Marked for Review' will be considered for evaluation.",
     },
   ];
 
-  // Check user enrollment and redirect if not enrolled in the course
-  useEffect(() => {
-    if (status === "loading") return; // Wait for session to load
-    
-    if (status === "unauthenticated") {
-      router.push("/"); // Redirect to home if not authenticated
-      return;
-    }
+  /* ---------------- FETCH EXAM ---------------- */
 
-    if (status === "authenticated" && session?.user && courseId) {
-      // Check if user is subscribed to this course
-      const isSubscribed = session.user.enrollments?.some(
-        (e: Enrollment) => e.courseId === courseId
-      );
-      
-      if (!isSubscribed) {
-        router.push("/"); // Redirect to home if not subscribed
-        return;
-      }
-    }
-  }, [session, status, courseId, router]);
-
-  // Fetch exam data
   useEffect(() => {
-    const fetchExamData = async () => {
+    if (!examId) return;
+
+    const fetchExam = async () => {
       try {
-        const response = await fetch(`/api/v1/exams/${examId}`);
-        const data = await response.json();
-        
-        if (!response.ok || data.status !== "success") {
-          setFetcherror(true);
+        const res = await fetch(`/api/v1/exams/${examId}`);
+        const json = await res.json();
+
+        if (!res.ok || json.status !== "success") {
+          setFetchError(true);
           setLoading(false);
           return;
         }
 
-        setAccessType(data.data.accessType);
-        setCourseId(data.data.courseId);
-        setExam(data.data);
-
+        setCourseId(json.data.courseId);
+        setExam(json.data);
+        setTimeLeft(json.data.totalDurationInSeconds);
         setLoading(false);
-      } catch (error) {
-        console.error("Error fetching exam data:", error);
-        setFetcherror(true);
+      } catch {
+        setFetchError(true);
         setLoading(false);
       }
     };
 
-    if (examId) fetchExamData();
+    fetchExam();
   }, [examId]);
 
-  // Pre-populate UserResponse with all questions and default answers
+  /* ---------------- ACCESS CONTROL ---------------- */
+
+  const isCheckingAccess = useMemo(() => {
+    return status === "loading" || loading || !courseId;
+  }, [status, loading, courseId]);
+
+  const hasAccess = useMemo(() => {
+    if (status !== "authenticated" || !session?.user) return false;
+
+    if (session.user.role === "ADMIN" || session.user.role === "SUPERADMIN") {
+      return true;
+    }
+
+    return session.user.enrollments?.some(
+      (e: Enrollment) => e.courseId === courseId
+    );
+  }, [status, session, courseId]);
+
   useEffect(() => {
-    if (!loading && !fetcherror && ExamData?.examSections?.length) {
-      const prePopulatedAnswers: UserAnswer[] = [];
-      ExamData.examSections.forEach((section) => {
-        section.questions.forEach((question) => {
-          prePopulatedAnswers.push({
-            questionId: question.id,
-            isAttempted: false,
-            value: "",
-            chosenOptions: [],
-          });
+    if (isCheckingAccess) return;
+
+    if (!hasAccess) {
+      toast.error("You are not subscribed to this course");
+      router.replace("/");
+    }
+  }, [isCheckingAccess, hasAccess, router]);
+
+  /* ---------------- USER RESPONSE INIT ---------------- */
+
+  useEffect(() => {
+    if (!ExamData?.examSections?.length) return;
+
+    const answers: UserAnswer[] = [];
+
+    ExamData.examSections.forEach((section) => {
+      section.questions.forEach((q) => {
+        answers.push({
+          questionId: q.id,
+          isAttempted: false,
+          value: "",
+          chosenOptions: [],
         });
       });
-      setUserResponse((prev) => ({
-        ...prev,
-        userAnswerPerQuestions: prePopulatedAnswers,
-      }));
-      setTimeLeft(ExamData.totalDurationInSeconds);
-    }
-  }, [loading, fetcherror, ExamData]);
+    });
 
-  // Load any saved answer for the current question
+    setUserResponse((prev) => ({
+      ...prev,
+      userId: session?.user.id ?? "",
+      userAnswerPerQuestions: answers,
+    }));
+  }, [ExamData, session]);
+
+  /* ---------------- LOAD CURRENT ANSWER ---------------- */
+
   useEffect(() => {
-    if (!fetcherror && !loading && ExamData?.examSections.length) {
-      const questionId =
-        ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]]
-          .id;
-      const existingAnswer = UserResponse.userAnswerPerQuestions.find(
-        (ans) => ans.questionId === questionId
-      );
-      if (existingAnswer) {
-        setCurrentanswer({
-          value: existingAnswer.value,
-          questionId: existingAnswer.questionId,
-          chosenOptions: existingAnswer.chosenOptions,
-        });
-      } else {
-        setCurrentanswer(null);
-      }
-    }
-  }, [
-    currentQuestion,
-    ExamData,
-    loading,
-    UserResponse.userAnswerPerQuestions,
-    fetcherror,
-  ]);
+    if (fetchError || loading || !ExamData?.examSections?.length) return;
 
-  const handleStart = () => setCurrentStep("quiz");
+    const questionId = ExamData.examSections[currentQuestion[0]]?.questions[currentQuestion[1]]?.id;
+    if (!questionId) return;
+
+    const existingAnswer = UserResponse.userAnswerPerQuestions.find(
+      (ans) => ans.questionId === questionId
+    );
+    
+    if (existingAnswer && (existingAnswer.value || existingAnswer.chosenOptions?.length > 0)) {
+      setCurrentAnswer({
+        value: existingAnswer.value,
+        questionId: existingAnswer.questionId,
+        chosenOptions: existingAnswer.chosenOptions,
+      });
+    } else {
+      setCurrentAnswer(null);
+    }
+  }, [currentQuestion, ExamData, loading, UserResponse.userAnswerPerQuestions, fetchError]);
+
+  /* ---------------- HANDLERS ---------------- */
+
+  const handleStart = () => {
+    if (acceptedTerms) {
+      setCurrentStep("quiz");
+    } else {
+      toast.error("Please accept the terms and conditions to start the exam");
+    }
+  };
 
   const handleAnswer = (
     sectionIndex: number,
@@ -200,18 +208,28 @@ const QuizApp = () => {
     optionIndex?: number,
     value?: string
   ) => {
-    const questionData =
-      ExamData.examSections[sectionIndex].questions[questionIndex];
-    const currentSectionData = ExamData.examSections[currentQuestion[0]];
-    // For numerical questions, we won't use this handler.
-    if (questionData.options.length === 0) return;
+    if (!ExamData?.examSections?.[sectionIndex]?.questions?.[questionIndex]) return;
 
-    const optionId =
-      optionIndex !== undefined ? questionData.options[optionIndex].id : "";
-    // Determine if multiple selections are allowed
+    const questionData = ExamData.examSections[sectionIndex].questions[questionIndex];
+    
+    // For numerical questions, handle differently
+    if (questionData.options.length === 0 && value !== undefined) {
+      setCurrentAnswer({
+        value,
+        questionId: questionData.id,
+        chosenOptions: [],
+      });
+      return;
+    }
+
+    // For MCQ questions
+    if (optionIndex === undefined) return;
+
+    const optionId = questionData.options[optionIndex].id;
+    const currentSectionData = ExamData.examSections[sectionIndex];
     const isMultiple = currentSectionData.sectionConfig.partialMarks.length > 1;
 
-    setCurrentanswer((prev) => {
+    setCurrentAnswer((prev) => {
       if (isMultiple) {
         // Toggle the option in the list
         let newChosen = prev?.chosenOptions ? [...prev.chosenOptions] : [];
@@ -237,12 +255,10 @@ const QuizApp = () => {
   };
 
   const updateCurrentAnswer = (newValue: string) => {
-    // Retrieve the current question's id
-    const questionId =
-      ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]]
-        .id;
-    // Update currentanswer with the new value (preserving any existing chosenOptions)
-    setCurrentanswer((prev) => ({
+    if (!ExamData?.examSections?.[currentQuestion[0]]?.questions?.[currentQuestion[1]]) return;
+
+    const questionId = ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]].id;
+    setCurrentAnswer((prev) => ({
       value: newValue,
       questionId,
       chosenOptions: prev?.chosenOptions || [],
@@ -250,23 +266,23 @@ const QuizApp = () => {
   };
 
   const handleSaveAndNext = () => {
-    const [sectionIndex, questionIndex] = currentQuestion;
-    const questionId =
-      ExamData.examSections[sectionIndex].questions[questionIndex].id;
+    if (!ExamData?.examSections?.[currentQuestion[0]]?.questions?.[currentQuestion[1]]) return;
 
-    // Update the pre-populated answer for the current question
+    const [sectionIndex, questionIndex] = currentQuestion;
+    const questionId = ExamData.examSections[sectionIndex].questions[questionIndex].id;
+
+    // Update the user response
     setUserResponse((prev) => {
       const updatedAnswers = prev.userAnswerPerQuestions.map((answer) =>
         answer.questionId === questionId
           ? {
-            ...answer,
-            isAttempted: true,
-            value: currentanswer?.value?.toString() || "",
-            chosenOptions:
-              currentanswer?.chosenOptions?.map((option) => ({
+              ...answer,
+              isAttempted: true,
+              value: currentAnswer?.value?.toString() || "",
+              chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
                 optionId: option.optionId,
               })) || [],
-          }
+            }
           : answer
       );
       return {
@@ -275,180 +291,171 @@ const QuizApp = () => {
       };
     });
 
-    setCurrentanswer(null);
-
-    // Move to next question logic
-    if (
-      ExamData &&
-      currentQuestion[1] + 1 <
-      ExamData.examSections[currentQuestion[0]].questions.length
-    ) {
-      const nextQuestion = currentQuestion[1] + 1;
-      setCurrentQuestion([currentQuestion[0], nextQuestion]);
-      setVisitedQuestions(
-        new Set([...visitedQuestions, `${currentQuestion[0]}-${nextQuestion}`])
-      );
+    // Move to next question
+    const currentSection = ExamData.examSections[sectionIndex];
+    if (questionIndex + 1 < currentSection.questions.length) {
+      const nextQuestion = questionIndex + 1;
+      setCurrentQuestion([sectionIndex, nextQuestion]);
+      setVisitedQuestions(new Set([...visitedQuestions, `${sectionIndex}-${nextQuestion}`]));
+    } else if (sectionIndex + 1 < ExamData.examSections.length) {
+      setCurrentQuestion([sectionIndex + 1, 0]);
+      setVisitedQuestions(new Set([...visitedQuestions, `${sectionIndex + 1}-0`]));
     } else {
-      const nextSection =
-        ExamData && ExamData.examSections[currentQuestion[0]]
-          ? (currentQuestion[0] + 1) % ExamData.examSections.length
-          : 0;
-      setCurrentQuestion([nextSection, 0]);
-      setVisitedQuestions(new Set([...visitedQuestions, `${nextSection}-0`]));
+      // Reached end of exam, go to summary
+      setCurrentStep("summary");
     }
+
+    setCurrentAnswer(null);
   };
 
   const handleClearAnswer = () => {
-    setCurrentanswer(null);
+    if (!ExamData?.examSections?.[currentQuestion[0]]?.questions?.[currentQuestion[1]]) return;
+
+    const questionId = ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]].id;
+
     setUserResponse((prev) => ({
       ...prev,
       userAnswerPerQuestions: prev.userAnswerPerQuestions.map((answer) =>
-        answer.questionId ===
-          ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]]
-            .id
-          ? { ...answer, value: "", chosenOptions: [] }
+        answer.questionId === questionId
+          ? { ...answer, value: "", chosenOptions: [], isAttempted: false }
           : answer
       ),
     }));
 
-    if (markedForReview.has(`${currentQuestion[0]}-${currentQuestion[1]}`)) {
+    const questionKey = `${currentQuestion[0]}-${currentQuestion[1]}`;
+    if (markedForReview.has(questionKey)) {
       const newMarked = new Set(markedForReview);
-      newMarked.delete(`${currentQuestion[0]}-${currentQuestion[1]}`);
+      newMarked.delete(questionKey);
       setMarkedForReview(newMarked);
     }
 
-    setVisitedQuestions(
-      new Set([
-        ...visitedQuestions,
-        `${currentQuestion[0]}-${currentQuestion[1]}`,
-      ])
-    );
+    setCurrentAnswer(null);
   };
 
   const handleMarkForReview = () => {
-    setCurrentanswer(null);
-    setMarkedForReview(
-      new Set([
-        ...markedForReview,
-        `${currentQuestion[0]}-${currentQuestion[1]}`,
-      ])
-    );
-    if (
-      ExamData &&
-      currentQuestion[1] + 1 <
-      ExamData.examSections[currentQuestion[0]].questions.length
-    ) {
-      const nextQuestion = currentQuestion[1] + 1;
-      setCurrentQuestion([currentQuestion[0], nextQuestion]);
-      setVisitedQuestions(
-        new Set([...visitedQuestions, `${currentQuestion[0]}-${nextQuestion}`])
-      );
-    } else {
-      const nextSection =
-        ExamData && ExamData.examSections[currentQuestion[0]]
-          ? (currentQuestion[0] + 1) % ExamData.examSections.length
-          : 0;
-      setCurrentQuestion([nextSection, 0]);
-      setVisitedQuestions(new Set([...visitedQuestions, `${nextSection}-0`]));
+    const questionKey = `${currentQuestion[0]}-${currentQuestion[1]}`;
+    setMarkedForReview(new Set([...markedForReview, questionKey]));
+
+    // Save current answer if exists
+    if (currentAnswer && ExamData?.examSections?.[currentQuestion[0]]?.questions?.[currentQuestion[1]]) {
+      const questionId = ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]].id;
+      
+      setUserResponse((prev) => {
+        const updatedAnswers = prev.userAnswerPerQuestions.map((answer) =>
+          answer.questionId === questionId
+            ? {
+                ...answer,
+                isAttempted: true,
+                value: currentAnswer?.value?.toString() || "",
+                chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
+                  optionId: option.optionId,
+                })) || [],
+              }
+            : answer
+        );
+        return {
+          ...prev,
+          userAnswerPerQuestions: updatedAnswers,
+        };
+      });
     }
+
+    handleNextQuestion();
   };
 
   const handleNextQuestion = () => {
-    setCurrentanswer(null);
-    if (
-      ExamData?.examSections?.[currentQuestion[0]] &&
-      currentQuestion[1] + 1 <
-      ExamData.examSections[currentQuestion[0]].questions.length
-    ) {
-      const nextQuestion = currentQuestion[1] + 1;
-      setCurrentQuestion([currentQuestion[0], nextQuestion]);
-      setVisitedQuestions(
-        new Set([...visitedQuestions, `${currentQuestion[0]}-${nextQuestion}`])
-      );
-    } else if (ExamData?.examSections?.length) {
-      const nextSection = (currentQuestion[0] + 1) % ExamData.examSections.length;
-      setCurrentQuestion([nextSection, 0]);
-      setVisitedQuestions(new Set([...visitedQuestions, `${nextSection}-0`]));
+    if (!ExamData?.examSections) return;
+
+    const [sectionIndex, questionIndex] = currentQuestion;
+    const currentSection = ExamData.examSections[sectionIndex];
+
+    if (questionIndex + 1 < currentSection.questions.length) {
+      const nextQuestion = questionIndex + 1;
+      setCurrentQuestion([sectionIndex, nextQuestion]);
+      setVisitedQuestions(new Set([...visitedQuestions, `${sectionIndex}-${nextQuestion}`]));
+    } else if (sectionIndex + 1 < ExamData.examSections.length) {
+      setCurrentQuestion([sectionIndex + 1, 0]);
+      setVisitedQuestions(new Set([...visitedQuestions, `${sectionIndex + 1}-0`]));
     }
+    setCurrentAnswer(null);
   };
 
   const handlePrevQuestion = () => {
-    setCurrentanswer(null);
-    if (currentQuestion[1] > 0) {
-      setCurrentQuestion([currentQuestion[0], currentQuestion[1] - 1]);
-    } else if (ExamData?.examSections?.length) {
-      const prevSection =
-        (currentQuestion[0] - 1 + ExamData.examSections.length) %
-        ExamData.examSections.length;
-      const prevQuestion =
-        ExamData.examSections[prevSection].questions.length - 1;
+    if (!ExamData?.examSections) return;
+
+    const [sectionIndex, questionIndex] = currentQuestion;
+
+    if (questionIndex > 0) {
+      setCurrentQuestion([sectionIndex, questionIndex - 1]);
+    } else if (sectionIndex > 0) {
+      const prevSection = sectionIndex - 1;
+      const prevQuestion = ExamData.examSections[prevSection].questions.length - 1;
       setCurrentQuestion([prevSection, prevQuestion]);
     }
+    setCurrentAnswer(null);
   };
 
-  const onSubmit = async (ans: boolean) => {
-    if (ans) {
+  const onSubmit = async (shouldSubmit: boolean) => {
+    if (!shouldSubmit) {
+      setCurrentStep("quiz");
+      return;
+    }
+
+    try {
       const updatedResponse = {
         ...UserResponse,
         userId: session?.user.id ?? "",
       };
 
-      try {
-        const response = await fetch(`/api/v1/user-submissions`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updatedResponse),
-        });
+      const response = await fetch(`/api/v1/user-submissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedResponse),
+      });
 
-        const result = await response.json();
-
-        const {
-          userId,
-          examId,
-          id: userSubmissionId,
-        } = result.data;
-
-        const report = (await submitAttempt(
-          userId,
-          examId,
-          userSubmissionId,
-          ExamData.totalDurationInSeconds - timeLeft
-        )) as {
-          data: {
-            examId: string;
-            userId: string;
-            userSubmissionId: string;
-            score: number;
-            accuracy: number;
-            attemptedQuestions: number;
-            correctAnswers: number;
-            incorrectAnswers: number;
-            timeTaken: number;
-            percentile: number;
-            rank: number;
-          };
-        };
-
-        const generateReport = await fetch(
-          `/api/v1/reports/exams/${report.data.examId}/generate-report`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: report.data.userId,
-              userSubmissionId: report.data.userSubmissionId,
-            }),
-          }
-        );
-        
-        const generateReportData = await generateReport.json();
-        setCurrentStep("submitted");
-        setUserResponse(updatedResponse);
-      } catch (error) {
-        console.error("Error submitting attempt:", error);
+      if (!response.ok) {
+        throw new Error("Failed to submit exam");
       }
-    } else {
-      setCurrentStep("quiz");
+
+      const result = await response.json();
+
+      const { userId, examId, id: userSubmissionId } = result.data;
+
+      const report = (await submitAttempt(
+        userId,
+        examId,
+        userSubmissionId,
+        ExamData.totalDurationInSeconds - timeLeft
+      )) as {
+        data: {
+          examId: string;
+          userId: string;
+          userSubmissionId: string;
+          score: number;
+          accuracy: number;
+          attemptedQuestions: number;
+          correctAnswers: number;
+          incorrectAnswers: number;
+          timeTaken: number;
+          percentile: number;
+          rank: number;
+        };
+      };
+
+      await fetch(`/api/v1/reports/exams/${report.data.examId}/generate-report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: report.data.userId,
+          userSubmissionId: report.data.userSubmissionId,
+        }),
+      });
+
+      setCurrentStep("submitted");
+      setUserResponse(updatedResponse);
+    } catch (error) {
+      console.error("Error submitting attempt:", error);
+      toast.error("Failed to submit exam. Please try again.");
     }
   };
 
@@ -457,14 +464,11 @@ const QuizApp = () => {
     questionNumber: number,
     questionId: string
   ) => {
-    const isVisited = visitedQuestions.has(
-      `${sectionNumber}-${questionNumber}`
-    );
+    const isVisited = visitedQuestions.has(`${sectionNumber}-${questionNumber}`);
     const answer = UserResponse.userAnswerPerQuestions.find(
       (ans) => ans.questionId === questionId
     );
-    const isAnswered =
-      answer?.isAttempted &&
+    const isAnswered = answer?.isAttempted &&
       ((answer.value && answer.value !== "") ||
         (answer.chosenOptions && answer.chosenOptions.length > 0));
     const isMarked = markedForReview.has(`${sectionNumber}-${questionNumber}`);
@@ -477,25 +481,54 @@ const QuizApp = () => {
     return "not-visited";
   };
 
-  // Show loading while checking authentication and enrollment
-  if (status === "loading" || loading) {
+  /* ---------------- RENDER LOGIC ---------------- */
+
+  // Show loading state while checking access
+  if (isCheckingAccess) {
     return (
-      <div className="container flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center gap-3">
+       
+          
+          <p className="text-lg animate-pulse text-gray-900">Checking access…</p>
+          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500"></div>
+       
+      </div>
+    );
+  }
+
+  // Redirecting state - render nothing while redirecting
+  if (!hasAccess) {
+    return null;
+  }
+
+  // Error state
+  if (fetchError) {
+    return (
+      <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
-          <h1 className="text-4xl font-bold mb-4">Loading...</h1>
-          <p className="text-xl">Please wait while we prepare your exam.</p>
+          <h1 className="text-3xl font-bold text-red-600">Error</h1>
+          <p>Failed to load exam.</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Retry
+          </Button>
         </div>
       </div>
     );
   }
 
-  // Show nothing while redirecting
-  if (status === "unauthenticated" || 
-      (status === "authenticated" && courseId && 
-       !session?.user.enrollments?.some((e: Enrollment) => e.courseId === courseId))) {
-    return null;
+  // Still loading exam data
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg">Loading exam…</p>
+        </div>
+      </div>
+    );
   }
+
+  /* ---------------- MAIN RENDER ---------------- */
 
   return (
     <StudyTracker>
@@ -504,49 +537,34 @@ const QuizApp = () => {
           <QuizHeader
             session={session}
             currentStep={currentStep}
-            setCurrentStep={setCurrentStep}
+            setCurrentStep={(step: string) => {
+              // Only allow valid steps
+              if (["info", "quiz", "summary", "submitted"].includes(step)) {
+                setCurrentStep(step as "info" | "quiz" | "summary" | "submitted");
+              }
+            }}
             timeLeft={timeLeft}
             setTimeLeft={setTimeLeft}
           />
         )}
 
-        {fetcherror && (
-          <div className="container flex items-center justify-center h-full">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold mb-4 text-red-600">Error!</h1>
-              <p className="text-xl text-gray-700">
-                Oops! Something went wrong while fetching the exam data.
-              </p>
-              <p className="text-md text-gray-500 mt-2">
-                Please check your internet connection and try again.
-              </p>
-              <Button
-                onClick={() => window.location.reload()}
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Retry
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {!fetcherror && !loading && currentStep === "info" && (
+        {currentStep === "info" && (
           <InfoPage
+            Exam={ExamData}
+            loading={loading}
             acceptedTerms={acceptedTerms}
             setAcceptedTerms={setAcceptedTerms}
             handleStart={handleStart}
-            loading={loading}
-            Exam={ExamData}
             questionStatuses={questionStatuses}
           />
         )}
 
-        {!fetcherror && !loading && currentStep === "quiz" && (
+        {currentStep === "quiz" && (
           <QuizPage
             Exam={ExamData}
             currentQuestion={currentQuestion}
             setCurrentQuestion={setCurrentQuestion}
-            currentanswer={currentanswer}
+            currentanswer={currentAnswer}
             handleAnswer={handleAnswer}
             updateCurrentAnswer={updateCurrentAnswer}
             handleSaveAndNext={handleSaveAndNext}
@@ -554,7 +572,12 @@ const QuizApp = () => {
             handleMarkForReview={handleMarkForReview}
             handleNextQuestion={handleNextQuestion}
             handlePrevQuestion={handlePrevQuestion}
-            setCurrentStep={setCurrentStep}
+            setCurrentStep={(step: string) => {
+              // Only allow valid steps
+              if (["info", "quiz", "summary", "submitted"].includes(step)) {
+                setCurrentStep(step as "info" | "quiz" | "summary" | "submitted");
+              }
+            }}
             session={{ userId: session?.user.id ?? "" }}
             visitedQuestions={visitedQuestions}
             setVisitedQuestions={setVisitedQuestions}
@@ -562,7 +585,7 @@ const QuizApp = () => {
           />
         )}
 
-        {!fetcherror && !loading && currentStep === "summary" && (
+        {currentStep === "summary" && (
           <ExamSummary
             Exam={ExamData}
             UserResponse={UserResponse}
@@ -572,9 +595,7 @@ const QuizApp = () => {
           />
         )}
 
-        {!fetcherror && !loading && currentStep === "submitted" && (
-          <SubmittedPage />
-        )}
+        {currentStep === "submitted" && <SubmittedPage />}
       </div>
     </StudyTracker>
   );

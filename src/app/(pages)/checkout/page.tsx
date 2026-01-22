@@ -265,7 +265,7 @@ export default function CheckoutPage() {
         {/* Desktop Layout - FIXED GRID */}
         <div className="hidden lg:flex lg:gap-2">
           {/* Left Column: Course Details */}
-          <div className="w-1/4 min-w-[450px] space-y-6">
+          <div className="w-1/4 min-w-[350px] space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
               <div className="relative w-full h-64 mb-6">
                 <Image 
@@ -304,7 +304,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Middle Column: Course Description Card - FIXED WIDTH */}
-          <div className="flex-1 min-w-[650px] max-w-[800px]">
+          <div className="flex-1 min-w-[400px] max-w-[800px]">
             <div className="h-full max-h-[calc(100vh-2rem)] rounded-xl">
               <CourseDescriptionCard />
             </div>

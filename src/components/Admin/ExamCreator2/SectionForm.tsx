@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 // import { Label } from "./ui/label";
 
 export function SectionDetailsForm({
@@ -125,6 +126,17 @@ export function SectionDetailsForm({
     fetchData();
   }, [examConfigId, examSections]);
 
+  // Add this useEffect in SectionDetailsForm
+useEffect(() => {
+  // When a section is selected for editing, ensure its subjectId is used
+  if (mode === "edit" && editingSectionId) {
+    const sectionToEdit = examSections.find(s => s.sectionConfigId === editingSectionId);
+    if (sectionToEdit?.subjectId && sectionToEdit.subjectId !== examSubjectId) {
+      setExamSubjectId(sectionToEdit.subjectId);
+    }
+  }
+}, [mode, editingSectionId, examSections]);
+
   function handleDeleteSection(sectionId: string) {
     if (editingSectionId === sectionId) {
       setEditingSectionId(null);
@@ -142,30 +154,50 @@ export function SectionDetailsForm({
     setSaved(true);
   }
 
-  function handleEditSection(section: SectionFormState) {
-    setEditingSectionId(section.sectionConfigId);
-    setMode("edit");
-    setQuestions(section.questions);
-    setSaved(false);
+  // In SectionDetailsForm component
+function handleEditSection(section: SectionFormState) {
+  setEditingSectionId(section.sectionConfigId);
+  setMode("edit");
+  setQuestions(section.questions);
+  setExamSubjectId(section.subjectId || ""); // Initialize with existing subjectId
+  setSaved(false);
+}
+
+ function handleSaveEdit() {
+  if (!editingSectionId) return;
+  
+  // Ensure we have a subjectId for editing
+  const currentSubjectId = examSubjectId || 
+    examSections.find(s => s.sectionConfigId === editingSectionId)?.subjectId || "";
+  
+  if (!currentSubjectId) {
+    toast.error("Please select a subject before saving");
+    return;
   }
 
-  function handleSaveEdit() {
-    setExamSections((prev) =>
-      prev.map((section) =>
-        section.sectionConfigId === editingSectionId
-          ? {
-            ...section,
-            questions,
-            numberOfQuestionsToAttempt: questions.length,
-          }
-          : section
-      )
-    );
-    setEditingSectionId(null);
-    setMode("add");
-    setQuestions([]);
-    setSaved(true);
-  }
+  setExamSections((prev) =>
+    prev.map((section) =>
+      section.sectionConfigId === editingSectionId
+        ? {
+          ...section,
+          subjectId: currentSubjectId, // Update subjectId
+          subject: subjects.find((s) => s.id === currentSubjectId)?.name || section.subject,
+          questions: questions.map(q => ({
+            ...q,
+            chapterId: q.chapterId || ""
+          })),
+          numberOfQuestionsToAttempt: questions.length,
+        }
+        : section
+    )
+  );
+  
+  setEditingSectionId(null);
+  setMode("add");
+  setQuestions([]);
+  setExamSubjectId(""); // Reset subject selection
+  setSaved(true);
+}
 
   function handleCancelEdit() {
     setEditingSectionId(null);
@@ -174,30 +206,39 @@ export function SectionDetailsForm({
     setSaved(true);
   }
 
-  function handleAddSection() {
-    if (!activeSection) return;
-
-    setSaved(true);
-    setExamSections((prev) => [
-      ...prev,
-      {
-        name: activeSection.name,
-        description: activeSection.description,
-        isAllQuestionsMandatory: true,
-        numberOfQuestionsToAttempt: questions.length,
-        sectionConfigId: activeSection.id,
-        sectionConfig: activeSection.name,
-        subjectId: examSubjectId,
-        subject: subjects.find((s) => s.id === examSubjectId)?.name || "",
-        questions: questions,
-      },
-    ]);
-    // setAvailableSections((prev) =>
-    //   prev.filter((section) => section.id !== activeSection.id)
-    // );
-    setActiveSection(null);
-    setQuestions([]);
+ function handleAddSection() {
+  if (!activeSection) return;
+  
+  // Ensure we have a subjectId
+  if (!examSubjectId) {
+    toast.error("Please select a subject before adding the section");
+    return;
   }
+
+  setSaved(true);
+  setExamSections((prev) => [
+    ...prev,
+    {
+      name: activeSection.name,
+      description: activeSection.description,
+      isAllQuestionsMandatory: true,
+      numberOfQuestionsToAttempt: questions.length,
+      sectionConfigId: activeSection.id,
+      sectionConfig: activeSection.name,
+      subjectId: examSubjectId, // Make sure this is included
+      subject: subjects.find((s) => s.id === examSubjectId)?.name || "",
+      questions: questions.map(q => ({
+        ...q,
+        // Ensure chapterId is included in each question
+        chapterId: q.chapterId || ""
+      })),
+    },
+  ]);
+  
+  setActiveSection(null);
+  setQuestions([]);
+  setExamSubjectId(""); // Reset subject selection
+}
 
   function handleCancelAddSection() {
     setActiveSection(null);
