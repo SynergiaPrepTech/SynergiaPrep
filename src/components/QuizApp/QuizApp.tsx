@@ -180,7 +180,7 @@ const QuizApp = () => {
     const existingAnswer = UserResponse.userAnswerPerQuestions.find(
       (ans) => ans.questionId === questionId
     );
-    
+
     if (existingAnswer && (existingAnswer.value || existingAnswer.chosenOptions?.length > 0)) {
       setCurrentAnswer({
         value: existingAnswer.value,
@@ -211,7 +211,7 @@ const QuizApp = () => {
     if (!ExamData?.examSections?.[sectionIndex]?.questions?.[questionIndex]) return;
 
     const questionData = ExamData.examSections[sectionIndex].questions[questionIndex];
-    
+
     // For numerical questions, handle differently
     if (questionData.options.length === 0 && value !== undefined) {
       setCurrentAnswer({
@@ -226,8 +226,9 @@ const QuizApp = () => {
     if (optionIndex === undefined) return;
 
     const optionId = questionData.options[optionIndex].id;
-    const currentSectionData = ExamData.examSections[sectionIndex];
-    const isMultiple = currentSectionData.sectionConfig.partialMarks.length > 1;
+    // Determine if question is multi-select by counting correct answers
+    const correctAnswersCount = questionData.options.filter(opt => opt.isCorrect).length;
+    const isMultiple = correctAnswersCount > 1;
 
     setCurrentAnswer((prev) => {
       if (isMultiple) {
@@ -276,13 +277,13 @@ const QuizApp = () => {
       const updatedAnswers = prev.userAnswerPerQuestions.map((answer) =>
         answer.questionId === questionId
           ? {
-              ...answer,
-              isAttempted: true,
-              value: currentAnswer?.value?.toString() || "",
-              chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
-                optionId: option.optionId,
-              })) || [],
-            }
+            ...answer,
+            isAttempted: true,
+            value: currentAnswer?.value?.toString() || "",
+            chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
+              optionId: option.optionId,
+            })) || [],
+          }
           : answer
       );
       return {
@@ -339,18 +340,18 @@ const QuizApp = () => {
     // Save current answer if exists
     if (currentAnswer && ExamData?.examSections?.[currentQuestion[0]]?.questions?.[currentQuestion[1]]) {
       const questionId = ExamData.examSections[currentQuestion[0]].questions[currentQuestion[1]].id;
-      
+
       setUserResponse((prev) => {
         const updatedAnswers = prev.userAnswerPerQuestions.map((answer) =>
           answer.questionId === questionId
             ? {
-                ...answer,
-                isAttempted: true,
-                value: currentAnswer?.value?.toString() || "",
-                chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
-                  optionId: option.optionId,
-                })) || [],
-              }
+              ...answer,
+              isAttempted: true,
+              value: currentAnswer?.value?.toString() || "",
+              chosenOptions: currentAnswer?.chosenOptions?.map((option) => ({
+                optionId: option.optionId,
+              })) || [],
+            }
             : answer
         );
         return {
@@ -487,11 +488,11 @@ const QuizApp = () => {
   if (isCheckingAccess) {
     return (
       <div className="flex h-screen items-center justify-center gap-3">
-       
-          
-          <p className="text-lg animate-pulse text-gray-900">Checking access…</p>
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500"></div>
-       
+
+
+        <p className="text-lg animate-pulse text-gray-900">Checking access…</p>
+        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-gray-500"></div>
+
       </div>
     );
   }

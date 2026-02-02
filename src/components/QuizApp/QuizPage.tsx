@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect } from "react";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -9,6 +11,16 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Menu,
   ChevronLeft,
@@ -23,7 +35,7 @@ import {
 import QuestionPanel from "./QuestionPanel";
 import { Exam, OptionSelection } from "@/types/examTypes";
 import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
+import katex from 'katex';
 import Image from "next/image";
 import StudyTracker from "../StudyTracker";
 
@@ -79,7 +91,7 @@ const ImageModal: React.FC<{
         >
           <CloseIcon className="h-6 w-6" />
         </Button>
-        
+
         <div className="relative w-full h-full">
           <img
             src={imageUrl}
@@ -87,7 +99,7 @@ const ImageModal: React.FC<{
             className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
           />
         </div>
-        
+
         <div className="mt-4 text-center">
           <Button
             onClick={onClose}
@@ -155,27 +167,54 @@ const Numpad: React.FC<{
 };
 
 // Helper function to render text with LaTeX
-const renderTextWithLatex = (text: string) => {
+const renderTextWithLatex = (text: string, isLatexReady: boolean = false) => {
   if (!text) return null;
-  
+
+  // Unescape dollar signs (\$ -> $) as source data often has them escaped
+  let processedText = text.replace(/\\\$/g, '$');
+
+  // If Latex (specifically mhchem) isn't ready, return text as is
+  if (!isLatexReady && processedText.includes('\\ce{')) {
+    return <span>{processedText}</span>;
+  }
+
+  // Wrap all \ce{...} chemistry notation that don't already have $ delimiters
+  const hasChemistry = /\\ce\{[^}]+\}/.test(processedText);
+  if (hasChemistry) {
+    // Only wrap if not already wrapped
+    if (!processedText.includes('$\\ce{')) {
+      processedText = processedText.replace(/\\ce\{[^}]+\}/g, (match) => `$${match}$`);
+    }
+  }
+
   // Split the text by LaTeX expressions
-  const parts = text.split(/(\$\$?[^$]+\$\$?)/);
-  
+  const parts = processedText.split(/(\$\$?[^$]+\$\$?)/);
+
   return parts.map((part, index) => {
     // Check if it's a LaTeX expression
     if (part.startsWith('$') && part.endsWith('$')) {
       const isBlock = part.startsWith('$$') && part.endsWith('$$');
       const latexContent = part.slice(isBlock ? 2 : 1, isBlock ? -2 : -1);
-      
+
       try {
-        if (isBlock) {
-          return <BlockMath key={index} math={latexContent} />;
-        } else {
-          return <InlineMath key={index} math={latexContent} />;
-        }
+        // KaTeX render options with trust for mhchem chemistry notation
+        const html = katex.renderToString(latexContent, {
+          displayMode: isBlock,
+          trust: true, // Required for \ce chemistry commands
+          strict: false,
+          throwOnError: false,
+        });
+
+        return (
+          <span
+            key={index}
+            dangerouslySetInnerHTML={{ __html: html }}
+            className={isBlock ? "katex-block" : "katex-inline"}
+          />
+        );
       } catch (error) {
-        console.warn('Katex rendering error:', error);
-        return <span key={index} className="text-red-500">{part}</span>;
+        console.warn('KaTeX rendering error:', error);
+        return <span key={index} className="text-red-500" title={String(error)}>{part} (Error: {String(error)})</span>;
       }
     }
     return <span key={index}>{part}</span>;
@@ -185,14 +224,14 @@ const renderTextWithLatex = (text: string) => {
 // Helper function to clean LaTeX expressions
 const cleanLatexText = (text: string) => {
   if (!text) return text;
-  
+
   // Fix common LaTeX issues
-  let cleaned = text
+  const cleaned = text
     // Ensure proper spacing
     .replace(/\\cdot/g, '\\cdot ')
     .replace(/\s+/g, ' ')
     .trim();
-  
+
   return cleaned;
 };
 
@@ -218,6 +257,21 @@ const QuizPage: React.FC<QuizPageProps> = ({
     url: string;
     alt: string;
   } | null>(null);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [isLatexReady, setIsLatexReady] = useState(false);
+
+  // Ensure katex is available globally for mhchem script to patch
+  if (typeof window !== 'undefined') {
+    (window as unknown as { katex: typeof katex }).katex = katex;
+  }
+
+  // Check if mhchem is ALREADY loaded (e.g. navigation or cached script)
+  useEffect(() => {
+    if ((window as unknown as { katex?: { __mhchemSpec?: unknown } }).katex?.__mhchemSpec) {
+      setIsLatexReady(true);
+    }
+  }, []);
+
 
   const currentSectionData = Exam?.examSections?.[currentQuestion[0]];
   const currentQuestionData = currentSectionData?.questions?.[currentQuestion[1]];
@@ -228,8 +282,9 @@ const QuizPage: React.FC<QuizPageProps> = ({
   }
 
   const isNumerical = currentQuestionData.options.length === 0;
-  const isMultipleChoice =
-    !isNumerical && currentSectionData.sectionConfig.partialMarks.length > 1;
+  // Determine if question is multi-select by counting correct answers
+  const correctAnswersCount = currentQuestionData.options.filter(opt => opt.isCorrect).length;
+  const isMultipleChoice = !isNumerical && correctAnswersCount > 1;
 
   return (
     <StudyTracker>
@@ -284,9 +339,9 @@ const QuizPage: React.FC<QuizPageProps> = ({
                   {/* Question Text with LaTeX */}
                   <div className="p-4 bg-gray-50 rounded-lg text-gray-800 text-lg">
                     <div className="katex-render">
-                      {renderTextWithLatex(currentQuestionData.text)}
+                      {renderTextWithLatex(currentQuestionData.text, isLatexReady)}
                     </div>
-                    
+
                     {currentQuestionData.imageUrl && (
                       <div className="mt-4 relative group">
                         <div className="relative w-full max-w-md mx-auto">
@@ -318,13 +373,12 @@ const QuizPage: React.FC<QuizPageProps> = ({
                       {currentQuestionData.options.map((option, index) => (
                         <div key={index} className="space-y-2">
                           <div
-                            className={`w-full gap-2 justify-start text-left min-h-[56px] py-4 px-5 rounded-lg text-md font-medium cursor-pointer ${
-                              currentanswer?.chosenOptions?.some(
-                                (opt) => opt.optionId === option.id
-                              )
-                                ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                : "text-gray-700 hover:bg-gray-100 hover:text-gray-800 border border-gray-200"
-                            }`}
+                            className={`w-full gap-2 justify-start text-left min-h-[56px] py-4 px-5 rounded-lg text-md font-medium cursor-pointer ${currentanswer?.chosenOptions?.some(
+                              (opt) => opt.optionId === option.id
+                            )
+                              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                              : "text-gray-700 hover:bg-gray-100 hover:text-gray-800 border border-gray-200"
+                              }`}
                             onClick={() =>
                               handleAnswer(
                                 currentQuestion[0],
@@ -337,7 +391,7 @@ const QuizPage: React.FC<QuizPageProps> = ({
                               {String.fromCharCode(65 + index)}
                             </span>
                             <span className="katex-render">
-                              {renderTextWithLatex(option.text)}
+                              {renderTextWithLatex(option.text, isLatexReady)}
                             </span>
                           </div>
                           {option.imageUrl && (
@@ -419,13 +473,35 @@ const QuizPage: React.FC<QuizPageProps> = ({
                       </Button>
                     </div>
 
-                    <Button
-                      variant="default"
-                      className="bg-indigo-600 hover:bg-indigo-700"
-                      onClick={() => setCurrentStep("summary")}
-                    >
-                      Submit
-                    </Button>
+                    <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+                      <Button
+                        variant="default"
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                        onClick={() => setShowSubmitDialog(true)}
+                      >
+                        Submit
+                      </Button>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Submit Exam?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to submit your exam? Once submitted, you won&apos;t be able to make any changes to your answers.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => {
+                              setShowSubmitDialog(false);
+                              setCurrentStep("summary");
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700"
+                          >
+                            Yes, Submit
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </CardContent>
@@ -460,6 +536,14 @@ const QuizPage: React.FC<QuizPageProps> = ({
           />
         )}
       </div>
+      <Script
+        src="https://cdn.jsdelivr.net/npm/katex@0.16.27/dist/contrib/mhchem.min.js"
+        strategy="afterInteractive"
+        onReady={() => {
+          console.log('mhchem script onReady fired');
+          setIsLatexReady(true);
+        }}
+      />
     </StudyTracker>
   );
 };
