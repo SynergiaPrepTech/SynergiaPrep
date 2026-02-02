@@ -42,7 +42,22 @@ export async function POST(req: Request) {
       },
     });
 
+
+  
+
+
     if (enroll) {
+
+        if (couponCode) {
+    await db.coupon.update({
+      where: { code: couponCode },
+      data: {
+        usedCount: { increment: 1 }, // increment usedCount by 1
+      },
+    });
+  }
+
+
       return NextResponse.json(
         { message: "Free course enrolled successfully", enroll, error: false },
         { status: 200 },
@@ -84,7 +99,8 @@ export async function POST(req: Request) {
     },
   });
 
-  if (couponCode) {
+
+    if (couponCode) {
     await db.coupon.update({
       where: { code: couponCode },
       data: {
@@ -93,6 +109,7 @@ export async function POST(req: Request) {
     });
   }
 
+ 
   return NextResponse.json(
     { message: "Payment successful, enrolled!", error: false },
     { status: 200 },

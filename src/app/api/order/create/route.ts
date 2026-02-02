@@ -106,6 +106,8 @@ export async function POST(req: Request) {
         coupon: appliedCoupon?.code ?? null,
       }
       });
+
+      
     }
 
     // Razorpay order creation with timeout handling
