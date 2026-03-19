@@ -45,14 +45,6 @@ export default function Team() {
       bio: "Visionary leader driving innovation and growth.",
       achievements: ["Led company to significant milestones.", "Pioneered new technology initiatives."],
     },
-    {
-      img: "/assets/images/Mouli.jpg",
-      h1: "Mouli Kalsa",
-      p: ["Executive Director and CMO"],
-      expertise: ["Marketing", "Brand Development", "Communication"],
-      bio: "Expert in marketing strategies and brand development.",
-      achievements: ["Developed successful marketing campaigns.", "Enhanced brand visibility."],
-    },
   ];
 
   const renderTabContent = (member: TeamMember) => {

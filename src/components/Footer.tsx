@@ -6,7 +6,16 @@ import Balancer from "react-wrap-balancer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Linkedin, Twitter, Facebook, Mail, Phone, MapPin, Youtube, Instagram } from "lucide-react";
+import {
+  Linkedin,
+  Twitter,
+  Facebook,
+  Mail,
+  Phone,
+  MapPin,
+  Youtube,
+  Instagram,
+} from "lucide-react";
 import { Section } from "./craft";
 import { useSession } from "next-auth/react";
 import {
@@ -19,24 +28,40 @@ import {
 export default function Footer() {
   const { data: session } = useSession();
   const socialLinks = [
-    { icon: Linkedin, href: "https://www.linkedin.com/company/105668233/admin/feed/following/", label: "Linkedin" },
+    {
+      icon: Linkedin,
+      href: "https://www.linkedin.com/company/105668233/admin/feed/following/",
+      label: "Linkedin",
+    },
     { icon: Twitter, href: "https://x.com/synergiaprep", label: "Twitter" },
-    { icon: Facebook, href: "https://www.facebook.com/profile.php?id=61572624476351", label: "Facebook" },
-    { icon: Youtube, href: "https://www.youtube.com/channel/UCJYS35ljo8orpaVk1r5y1RA", label: "YouTube" },
-    { icon: Instagram, href: "https://www.instagram.com/synergiaprep.official/?next=%2F", label: "Instagram" },
+    {
+      icon: Facebook,
+      href: "https://www.facebook.com/profile.php?id=61572624476351",
+      label: "Facebook",
+    },
+    {
+      icon: Youtube,
+      href: "https://www.youtube.com/channel/UCJYS35ljo8orpaVk1r5y1RA",
+      label: "YouTube",
+    },
+    {
+      icon: Instagram,
+      href: "https://www.instagram.com/synergiaprep.official/?next=%2F",
+      label: "Instagram",
+    },
   ];
 
   return (
     <footer>
       <Section className="px-4 ">
         <Card
-  className="relative border overflow-hidden min-h-[500px] 
+          className="relative border overflow-hidden min-h-[500px] 
              bg-gradient-to-r from-[#7078e8] to-[#96ff62] 
              bg-[length:200%_200%] bg-left 
              hover:bg-right transition-[background-position] 
              duration-500 ease-in-out 
-             rounded-t-xl shadow-[0_-2px_15px_rgba(0,0,0,0.08)]">
-
+             rounded-t-xl shadow-[0_-2px_15px_rgba(0,0,0,0.08)]"
+        >
           <CardContent className="relative z-10 p-6">
             <div className="grid gap-12 md:grid-cols-[1.5fr_1fr_0.5fr] py-4">
               {/* Company Info Section */}
@@ -70,10 +95,21 @@ export default function Footer() {
                       <span>+91 82749 95556</span>
                     </div>
                     <div className="flex items-center gap-2 hover:text-[#2d3436] transition-colors">
-                      <MapPin className="h-4 w-4" />
-                      <span>
-                        2ND-FR, FL- 2B, 8/3 220 Taramoni Ghat Road, Paschim
-                        Putiari, Kolkata, 700041, West Bengal
+                      <MapPin className="sm:h-5 sm:w-5 h-14 w-14" />
+                      <span className="hidden sm:block">
+                        Institution’s Innovation Council (IIC), Jadavpur
+                        University <br />
+                        7th Floor of the Technology Bhawan, Main Campus, 188,
+                        Raja S.C. Mallick Road, Kolkata, 700032, West Bengal,
+                        India.
+                      </span>
+
+                      <span className="block sm:hidden">
+                        Institution’s Innovation Council (IIC),
+                        <br />
+                        Jadavpur University 7th Floor of the Technology Bhawan,
+                        Main Campus, 188, Raja S.C. Mallick Road, Kolkata,
+                        700032, West Bengal, India.
                       </span>
                     </div>
                   </div>
@@ -132,14 +168,13 @@ export default function Footer() {
                     >
                       Contact Us
                     </Link>
-                    
-                      <Link
-                        href="/admin"
-                        className="text-muted-foreground hover:text-primary transition-colors duration-200"
-                      >
-                        Admin
-                      </Link>
-                    
+
+                    <Link
+                      href="/admin"
+                      className="text-muted-foreground hover:text-primary transition-colors duration-200"
+                    >
+                      Admin
+                    </Link>
                   </div>
                 </div>
               </div>

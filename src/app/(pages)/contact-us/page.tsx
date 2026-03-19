@@ -107,12 +107,15 @@ const ContactPage = () => {
                 </h2>
                 <div className="space-y-6">
                   <div className="flex items-start gap-4">
-                    <MapPin className="w-6 h-6 mt-1" />
+                    <MapPin className="w-20 h-20 mt-1" />
                     <div>
                       <h3 className="font-semibold">Our Location</h3>
                       <p className="text-gray-200 text-sm">
-                        2ND-FR, FL-2B, 8/3 220 Taramoni Ghat Road, Paschim
-                        Putiari, Kolkata, 700041, West Bengal, India
+                        Institution’s Innovation Council (IIC),<br /> Jadavpur
+                        University 
+                        7th Floor of the Technology Bhawan, Main Campus, 188,
+                        Raja S.C. Mallick Road, Kolkata, 700032, West Bengal,
+                        India.
                       </p>
                     </div>
                   </div>

@@ -12,12 +12,12 @@ const founders = [
     image: "/assets/AboutUs/Founders/TanbirAhmed.jpg",
     linkedin: "https://www.linkedin.com/in/tanbir-ahammed-71a719336/",
   },
-  {
-    name: "Mouli Kalsa",
-    role: "Executive Director and CMO",
-    image: "/assets/AboutUs/Founders/MouliKalsa.jpg",
-    linkedin: "https://www.linkedin.com/in/mouli-kalsa-55587021b",
-  },
+  // {
+  //   name: "Mouli Kalsa",
+  //   role: "Executive Director and CMO",
+  //   image: "/assets/AboutUs/Founders/MouliKalsa.jpg",
+  //   linkedin: "https://www.linkedin.com/in/mouli-kalsa-55587021b",
+  // },
   // {
   //   name: "Najes Riaz",
   //   role: "Co- Founder & COO",
@@ -43,7 +43,7 @@ export const FounderDisplay = () => {
 
       {/* Center the grid container */}
       <div className="flex justify-center">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 auto-rows-fr max-w-2xl">
+        <div className="grid grid-cols-1 gap-8 auto-rows-fr max-w-2xl place-items-center">
           {founders.map((founder) => (
             <Card
               key={founder.name}
